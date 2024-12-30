@@ -1,0 +1,2 @@
+aioresponses>=0.7.7
+pytest==7.4.0
