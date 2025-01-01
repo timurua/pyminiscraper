@@ -8,7 +8,7 @@ from aioresponses import aioresponses
 def test_robot_file_parser_initialization():
     parser = RobotFileParser()
     assert parser.entries == []
-    assert parser.sitemaps == []
+    assert parser.sitemap_normalized_urls == []
     assert parser.default_entry is None
     assert parser.access_rule == AccessRule.ALLOW_ALL
 
@@ -84,7 +84,7 @@ def test_robot_file_parser_parse_empty_lines():
     assert parser.default_entry.delay == 10
     assert parser.default_entry.req_rate.requests == 1
     assert parser.default_entry.req_rate.seconds == 5
-    assert parser.sitemaps == ["http://example.com/sitemap.xml"]
+    assert parser.sitemap_normalized_urls == ["http://example.com/sitemap.xml"]
 
     assert parser.entries[0].useragents == ["test-agent"]
     assert parser.entries[0].rulelines[0].path == "/test"
@@ -116,7 +116,7 @@ def test_robot_file_parser_parse_comments():
     assert parser.default_entry.delay == 10
     assert parser.default_entry.req_rate.requests == 1
     assert parser.default_entry.req_rate.seconds == 5
-    assert parser.sitemaps == ["http://example.com/sitemap.xml"]
+    assert parser.sitemap_normalized_urls == ["http://example.com/sitemap.xml"]
 
     assert parser.entries[0].useragents == ["test-agent"]
     assert parser.entries[0].rulelines[0].path == "/test"

@@ -6,10 +6,14 @@ from enum import Enum
 import aiohttp
 import logging
 import asyncio
+from .url_normalize import normalize_url
 
 logger = logging.getLogger("robots")
 
 RequestRate = collections.namedtuple("RequestRate", "requests seconds")
+
+class RobotsError(Exception):
+    pass
 
 class ParseState(Enum):
     NONE = 0
@@ -24,12 +28,12 @@ class AccessRule(Enum):
 class RobotFileParser:
     def __init__(self):
         self.entries: List[Entry] = []
-        self.sitemaps: List[str] = []
+        self.sitemap_normalized_urls: set[str] = []
         self.default_entry: Optional[Entry] = None
         self.access_rule: AccessRule = AccessRule.ALLOW_ALL
 
     @classmethod
-    async def download_and_parse(cls, normalized_url: str, client_session: aiohttp.ClientSession, timeout_seconds: int = 30) -> Optional["SitemapParser"]:
+    async def download_and_parse(cls, normalized_url: str, client_session: aiohttp.ClientSession, timeout_seconds: int = 30) -> Optional["RobotFileParser"]:
         try:
             async with client_session.get(normalized_url, timeout=aiohttp.ClientTimeout(total=timeout_seconds)) as http_response:
                 robots = cls()
@@ -41,13 +45,9 @@ class RobotFileParser:
                     content = await http_response.text()
                     robots.parse(content)
                 return robots
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        except Exception as e:
             logger.error(f"Error fetching {normalized_url}: {e}")
-        except (aiohttp.ClientResponseError, aiohttp.ClientPayloadError) as e:
-            logger.error(f"Error receiving response for {normalized_url}: {e}")
-        except (UnicodeDecodeError) as e:            
-            logger.error(f"Error decoding text for {normalized_url}: {e}")
-        return None                
+            raise RobotsError(f"""Failed to fetch robots.txt from {normalized_url}""") from e                    
         
     def _add_entry(self, entry: 'Entry') -> None:
         if "*" in entry.useragents:
@@ -102,7 +102,7 @@ class RobotFileParser:
                         entry.req_rate = RequestRate(int(numbers[0]), int(numbers[1]))
                     state = ParseState.RULES
             elif line[0] == "sitemap":
-                self.sitemaps.append(line[1])
+                self.sitemap_normalized_urls.add(normalize_url(line[1]))
         if state == ParseState.RULES:
             self._add_entry(entry)
 
@@ -142,9 +142,9 @@ class RobotFileParser:
         return None
 
     def site_maps(self) -> Optional[List[str]]:
-        if not self.sitemaps:
+        if not self.sitemap_normalized_urls:
             return None
-        return self.sitemaps
+        return self.sitemap_normalized_urls
 
     def __str__(self) -> str:
         entries = self.entries

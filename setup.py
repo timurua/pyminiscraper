@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import os
 
 setup(
     name="pyminiscaper",
@@ -11,7 +12,11 @@ setup(
         'selenium>=4.11.2',
         'python-dotenv>=1.0.0',
         'urllib3>=2.0.4',
-        'pandas>=2.0.3',
+        'click>=8.1.8',
+        'aiohttp>=3.11.11',
+        'extruct>=0.18.0',
+        'python-dateutil>=2.9.0',
+        'asyncclick>=8.1.7.2',
     ],
     author="Timur Valiulin",
     author_email="timurua@gmail.com",

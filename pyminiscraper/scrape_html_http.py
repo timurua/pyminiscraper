@@ -13,14 +13,14 @@ class HttpHtmlScraper:
         self.client_session = client_session
         self.timeout_seconds = timeout_seconds
 
-    async def scrape(self, url: ScraperUrl) -> Optional[ScraperWebPage]:
+    async def scrape(self, normalized_url: str) -> Optional[ScraperWebPage]:
         try:
-            async with self.client_session.get(url.normalized_url) as http_response:
+            async with self.client_session.get(normalized_url) as http_response:
                 if not http_response.status == 200:
-                    logger.error(f"Error fetching {url}: {http_response.status}")
+                    logger.error(f"Error fetching {normalized_url}: {http_response.status}")
                     return None
                 if not http_response.content_type.startswith('text/html'):
-                    logger.warning(f"Skipping non-HTML content type {http_response.content_type} for {url}")
+                    logger.warning(f"Skipping non-HTML content type {http_response.content_type} for {normalized_url}")
                     return None
                 html_content = await http_response.text()
 
@@ -30,17 +30,17 @@ class HttpHtmlScraper:
                     content=html_content.encode("utf-8") if html_content is not None else None,
                     content_type="text/html",
                     content_charset="utf-8",                    
-                    url=url.normalized_url,
-                    normalized_url=url.normalized_url,
+                    url=normalized_url,
+                    normalized_url=normalized_url,
                 )
                 return page
                 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.error(f"Error fetching {url}: {e}")
+            logger.error(f"Error fetching {normalized_url}: {e}")
         except (aiohttp.ClientResponseError, aiohttp.ClientPayloadError) as e:
-            logger.error(f"Error receiving response for {url}: {e}")
+            logger.error(f"Error receiving response for {normalized_url}: {e}")
         except (UnicodeDecodeError) as e:            
-            logger.error(f"Error decoding text for {url}: {e}")
+            logger.error(f"Error decoding text for {normalized_url}: {e}")
             
         return None
         

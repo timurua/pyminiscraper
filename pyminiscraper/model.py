@@ -7,11 +7,7 @@ from .url_normalize import normalize_url, normalized_url_hash as do_normalized_u
 class ScraperUrl:
     def __init__(self, url: str, *, no_cache: bool = False, max_depth: int = 16):
         self.url = url
-        if url:
-            self.normalized_url = normalize_url(
-                url)
-        else:
-            self.normalized_url = ""
+        self.normalized_url = normalize_url(url)
         self.no_cache = no_cache
         self.max_depth = max_depth
 

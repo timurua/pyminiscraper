@@ -15,6 +15,7 @@ from .extract import extract_metadata
 from .stats import DomainStats, ScraperStats, analyze_url_groups
 from .domain_metadata import DomainMetadata
 from .sitemap import SitemapParser
+from .robots import RobotFileParser
 
 logger = logging.getLogger("scraper")
 
@@ -46,8 +47,7 @@ class ScraperConfig:
                 scraper_callback: ScraperCallback | None = None,
                 user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/115.0.0.0 Safari/537.36',
-                no_cache: bool = False):
+                'Chrome/115.0.0.0 Safari/537.36',):
         self.scraper_urls = scraper_urls
         self.max_parallel_requests = max_parallel_requests
         self.domain_filter = DomainFilter(allow_l2_domains, [url.url for url in scraper_urls])
@@ -58,7 +58,6 @@ class ScraperConfig:
         self.scraper_store_factory = scraper_store_factory
         self.scraper_callback = scraper_callback
         self.user_agent = user_agent
-        self.no_cache = no_cache
 
     def log(self, text: str) -> None:
         logger.info(text)
@@ -140,7 +139,7 @@ class Scraper:
             self.config.log("Scraping URL: " + scraper_url.normalized_url)
 
             page = None
-            if (not self.config.no_cache) and (not scraper_url.no_cache) and scraper_store:
+            if (not scraper_url.no_cache) and scraper_store:
                 logger.info(
                     f"loading from store - {name} i:c={self.initiated_urls_count}:{self.completed_urls_count} url: {scraper_url.normalized_url}")
                 page = await scraper_store.load_page(scraper_url.normalized_url)
@@ -154,7 +153,7 @@ class Scraper:
                 self.domain_metadata[domain] = asyncio.create_task(self.download_domain_metadata(scraper_store, domain))
                 domain_metadata = await self.domain_metadata[domain]
 
-            if domain_metadata is None or not domain_metadata.robots.can_fetch(scraper_url.normalized_url):
+            if domain_metadata is None or not domain_metadata.robots.can_fetch(self.config.user_agent, scraper_url.normalized_url):
                 logger.info(
                     f"url not allowed for scraping - skipping i:c={self.initiated_urls_count}:{self.completed_urls_count} - url: {scraper_url.normalized_url}")
                 self.completed_urls_count += 1
@@ -189,20 +188,42 @@ class Scraper:
 
         return ScraperLoopResult(loop_completed_urls_count)
     
-    async def download_domain_metadata(self, scraper_store: ScraperStore, domain: str) -> DomainMetadata:
-        home_page_url=urljoin(domain, "/"),
-        home_page = await self.config.http_html_scraper_factory.new_scraper.scrape(home_page)
+    async def get_domain_metadata(self, scraper_store: ScraperStore, scraper_url: ScraperUrl) -> DomainMetadata:
+        normalized_url_parsed = urlparse(scraper_url.normalized_url)
+        domain_metadata_task = self.domain_metadata.get(normalized_url_parsed.netloc)
+        if domain_metadata_task is not None:
+            return await domain_metadata_task
+        
+        domain_url = f"{normalized_url_parsed.scheme}://{normalized_url_parsed.netloc}"
+        domain_metadata_task = asyncio.create_task(self.download_domain_metadata(scraper_store, domain_url))
+        self.domain_metadata[normalized_url_parsed.netloc] = domain_metadata_task
+        return await domain_metadata_task
+
+    
+    async def download_domain_metadata(self, scraper_store: ScraperStore, domain_url: str) -> DomainMetadata:
+        home_page_url=urljoin(domain_url, "/")
+        home_page = await self.http_html_scraper_factory.new_scraper().scrape(home_page_url)
         home_page = self.extract_metadata_and_save(scraper_store, home_page)
 
-        robots_url = urljoin(domain, "/robots.txt")
-        robot = await self.config.http_html_scraper_factory.new_scraper.scrape(robots_url)
-
+        robots_url = urljoin(domain_url, "/robots.txt")
+        try:
+            robot = await RobotFileParser.download_and_parse(robots_url, self.http_html_scraper_factory.client_session)
+        except Exception as e:
+            logger.error(f"Error fetching sitemap {robots_url}: {e}")
+            robot = RobotFileParser()
+        
         sitemaps: dict[str, SitemapParser] = {}
-
+        for sitemap_normalized_url in robot.sitemap_normalized_urls:
+            try:
+                sitemap = await SitemapParser.download_and_parse(sitemap_normalized_url, self.http_html_scraper_factory.client_session)
+                sitemaps[sitemap_normalized_url] = sitemap
+            except Exception as e:
+                logger.error(f"Error fetching sitemap {sitemap_normalized_url}: {e}")
+        
         return DomainMetadata(
-            home_page=urljoin(domain, "/"),
-            sitemap=urljoin(domain, "/sitemap.xml"),
-            robots=urljoin(domain, "/robots.txt")
+            robots=robot,
+            sitemaps=sitemaps,
+            home_page=home_page
         )
 
     async def queue_if_allowed(self, outgoing_scraper_url: ScraperUrl) -> None:
@@ -237,44 +258,4 @@ class Scraper:
     async def stop(self) -> None:
         for i in range(self.config.max_parallel_requests):
             await self.url_queue.put(ScraperUrl.create_terminal())
-
-    async def get_domain_metadata(self, normalized_url: str) -> DomainStats:
-        domain = urlparse(normalized_url).netloc
-        if domain in self.config.domain_metadata:
-            return await self.config.domain_metadata[domain]
-        return None
     
-async def main():
-    logging.basicConfig(
-        # Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        level=logging.INFO,
-        # Define the log format
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout),  # Log to standard output
-        ]
-    )
-
-    store = ScraperStore()
-    http_html_scraper_factory = HttpHtmlScraperFactory(scraper_store=store)
-    browser_html_scraper_factory = BrowserHtmlScraperFactory(scraper_store=store)
-    scraper = Scraper(
-        ScraperConfig(
-            scraper_urls=[
-                ScraperUrl(
-                    "https://www.anthropic.com/news", max_depth=2)
-            ],
-            max_parallel_requests=16,
-            use_headless_browser=True,
-            allowed_domains=["anthropic.com"],
-            max_queue_size=1024*1024,
-            timeout_seconds=30,
-            http_html_scraper_factory=http_html_scraper_factory,
-            browser_html_scraper_factory=browser_html_scraper_factory,
-            scraper_store=InMemoryScraperStore(),
-        ),
-    )
-    await scraper.start()
-
-if __name__ == "__main__":
-    asyncio.run(main())

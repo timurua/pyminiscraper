@@ -8,6 +8,9 @@ import xml.etree.ElementTree as ET
 
 logger = logging.getLogger("robots")
 
+class SitemapError(Exception):
+    pass
+
 class ChangeFrequency(Enum):
     ALWAYS = "always"
     HOURLY = "hourly"
@@ -100,5 +103,7 @@ class SitemapParser:
                 parser = cls()
                 parser.parse(content)
                 return parser
-        except aiohttp.ClientError as e:
-            raise ValueError(f"Failed to download sitemap: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching {normalized_url}: {e}")
+            raise SitemapError(f"""Failed to fetch sitemap from {normalized_url}""") from e                    
+
