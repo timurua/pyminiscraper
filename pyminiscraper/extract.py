@@ -23,7 +23,7 @@ def extract_metadata(web_page: ScraperWebPage) -> ScraperWebPage:
     web_page.visible_text = html_content.visible_text
     web_page.canonical_url = html_content.canonical_url
     web_page.outgoing_urls = html_content.outgoing_urls
-    web_page.sitemap_url = html_content.sitemap_url
+    web_page.sitemap_urls = html_content.sitemap_urls
     web_page.robots_content = html_content.robots_content
 
     web_page.text_chunks = chunk_text(web_page.visible_text)

@@ -30,7 +30,7 @@ async def main(storage_dir: pathlib.Path):
                     "https://www.anthropic.com/news", max_depth=2)
             ],
             max_parallel_requests=16,
-            use_headless_browser=True,
+            use_headless_browser=False,
             max_queue_size=1024*1024,
             timeout_seconds=30,
             scraper_store_factory=MemoryStoreFactory(),

@@ -28,7 +28,7 @@ class AccessRule(Enum):
 class RobotFileParser:
     def __init__(self):
         self.entries: List[Entry] = []
-        self.sitemap_normalized_urls: set[str] = []
+        self.sitemap_normalized_urls: set[str] = set()
         self.default_entry: Optional[Entry] = None
         self.access_rule: AccessRule = AccessRule.ALLOW_ALL
 

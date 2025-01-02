@@ -74,7 +74,7 @@ class BrowserHtmlScraper:
         self.driver_get = driver_get
         self.driver_return = driver_return
 
-    async def scrape(self, url: ScraperUrl) -> ScraperWebPage|None:
+    async def scrape(self, normalized_url: str) -> ScraperWebPage|None:
         loop = asyncio.get_event_loop()
         try:
             driver = self.driver_get()
@@ -112,8 +112,8 @@ class BrowserHtmlScraper:
             content_type="text/html",
             content_charset="utf-8",
             headless_browser=True,
-            url=url.url,
-            normalized_url=url.normalized_url,
-            normalized_url_hash=normalized_url_hash(url.normalized_url),
+            url=normalized_url,
+            normalized_url=normalized_url,
+            normalized_url_hash=normalized_url_hash(normalized_url),
         )
         return page

@@ -114,6 +114,7 @@ class Scraper:
         page = extract_metadata(page)
         if scraper_store:
             await scraper_store.store_page(page)
+        return page
 
 
     async def scrape_loop(self, name: str) -> ScraperLoopResult:
@@ -147,13 +148,9 @@ class Scraper:
                 if page:
                     page = extract_metadata(page)
 
-            domain = urlparse(scraper_url.normalized_url).netloc
-            domain_metadata = None
-            if domain not in self.domain_metadata:
-                self.domain_metadata[domain] = asyncio.create_task(self.download_domain_metadata(scraper_store, domain))
-                domain_metadata = await self.domain_metadata[domain]
-
-            if domain_metadata is None or not domain_metadata.robots.can_fetch(self.config.user_agent, scraper_url.normalized_url):
+            domain_metadata = await self.get_domain_metadata(scraper_store, scraper_url)
+            
+            if not domain_metadata.robots.can_fetch(self.config.user_agent, scraper_url.normalized_url):
                 logger.info(
                     f"url not allowed for scraping - skipping i:c={self.initiated_urls_count}:{self.completed_urls_count} - url: {scraper_url.normalized_url}")
                 self.completed_urls_count += 1
@@ -165,7 +162,7 @@ class Scraper:
                 if self.config.use_headless_browser and self.browser_html_scraper_factory:
                     page = await self.browser_html_scraper_factory.new_scraper().scrape(scraper_url)
                 else:
-                    page = await self.http_html_scraper_factory.new_scraper().scrape(scraper_url)
+                    page = await self.http_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
             
             if page is not None:
                 page = await self.extract_metadata_and_save(scraper_store, page)
@@ -195,6 +192,7 @@ class Scraper:
             return await domain_metadata_task
         
         domain_url = f"{normalized_url_parsed.scheme}://{normalized_url_parsed.netloc}"
+        logger.info(f"downloading domain metadata {domain_url}")
         domain_metadata_task = asyncio.create_task(self.download_domain_metadata(scraper_store, domain_url))
         self.domain_metadata[normalized_url_parsed.netloc] = domain_metadata_task
         return await domain_metadata_task
@@ -202,11 +200,13 @@ class Scraper:
     
     async def download_domain_metadata(self, scraper_store: ScraperStore, domain_url: str) -> DomainMetadata:
         home_page_url=urljoin(domain_url, "/")
+        logger.info(f"downloading home page {home_page_url}")
         home_page = await self.http_html_scraper_factory.new_scraper().scrape(home_page_url)
-        home_page = self.extract_metadata_and_save(scraper_store, home_page)
+        home_page = await self.extract_metadata_and_save(scraper_store, home_page)
 
         robots_url = urljoin(domain_url, "/robots.txt")
         try:
+            logger.info(f"downloading robots.txt {robots_url}")
             robot = await RobotFileParser.download_and_parse(robots_url, self.http_html_scraper_factory.client_session)
         except Exception as e:
             logger.error(f"Error fetching sitemap {robots_url}: {e}")
@@ -215,6 +215,7 @@ class Scraper:
         sitemaps: dict[str, SitemapParser] = {}
         for sitemap_normalized_url in robot.sitemap_normalized_urls:
             try:
+                logger.info(f"downloading sitemap {sitemap_normalized_url}")
                 sitemap = await SitemapParser.download_and_parse(sitemap_normalized_url, self.http_html_scraper_factory.client_session)
                 sitemaps[sitemap_normalized_url] = sitemap
             except Exception as e:
