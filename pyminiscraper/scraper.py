@@ -45,6 +45,7 @@ class ScraperConfig:
                 scraper_store_factory: ScraperStoreFactory | None = None,
                 allow_l2_domains: bool = True,
                 scraper_callback: ScraperCallback | None = None,
+                max_depth: int = 16,
                 user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
                 'Chrome/115.0.0.0 Safari/537.36',):
@@ -57,6 +58,7 @@ class ScraperConfig:
         self.max_requested_urls = max_requested_urls
         self.scraper_store_factory = scraper_store_factory
         self.scraper_callback = scraper_callback
+        self.max_depth = max_depth
         self.user_agent = user_agent
 
     def log(self, text: str) -> None:
@@ -202,6 +204,11 @@ class Scraper:
         home_page_url=urljoin(domain_url, "/")
         logger.info(f"downloading home page {home_page_url}")
         home_page = await self.http_html_scraper_factory.new_scraper().scrape(home_page_url)
+        if home_page is None:
+            return DomainMetadata(
+                robots=RobotFileParser(),
+        )
+
         home_page = await self.extract_metadata_and_save(scraper_store, home_page)
 
         robots_url = urljoin(domain_url, "/robots.txt")
@@ -213,13 +220,26 @@ class Scraper:
             robot = RobotFileParser()
         
         sitemaps: dict[str, SitemapParser] = {}
-        for sitemap_normalized_url in robot.sitemap_normalized_urls:
+        normalized_sitemap_urls = set()
+        normalized_sitemap_urls.update([normalize_url(url) for url in home_page.sitemap_urls])
+        normalized_sitemap_urls.update(robot.sitemap_normalized_urls)
+
+        while len(normalized_sitemap_urls) > 0:
+            normalized_sitemap_url = normalized_sitemap_urls.pop()
+            if normalized_sitemap_url in sitemaps:
+                continue
             try:
-                logger.info(f"downloading sitemap {sitemap_normalized_url}")
-                sitemap = await SitemapParser.download_and_parse(sitemap_normalized_url, self.http_html_scraper_factory.client_session)
-                sitemaps[sitemap_normalized_url] = sitemap
+                logger.info(f"downloading sitemap {normalized_sitemap_url}")
+                sitemap = await SitemapParser.download_and_parse(normalized_sitemap_url, self.http_html_scraper_factory.client_session)
+                sitemaps[normalized_sitemap_url] = sitemap
+                normalized_sitemap_urls.update([normalize_url(url.loc) for url in sitemap.sitemap_urls])
             except Exception as e:
-                logger.error(f"Error fetching sitemap {sitemap_normalized_url}: {e}")
+                logger.error(f"Error fetching sitemap {normalized_sitemap_url}: {e}")
+
+        for url in sitemaps:
+            sitemap = sitemaps[url]
+            for page_url in sitemap.page_urls:
+                await self.queue_if_allowed(ScraperUrl(page_url.loc, no_cache=True, max_depth=self.config.max_depth))
         
         return DomainMetadata(
             robots=robot,

@@ -5,6 +5,7 @@ import os
 import json
 import datetime
 from dateutil import parser
+from .url_normalize import normalized_url_hash
 
 class FileStoreFactory(ScraperStoreFactory):
     def __init__(self, directory: str):
@@ -19,7 +20,7 @@ class FileStore(ScraperStore):
         
     async def store_page(self, response: ScraperWebPage) -> None:
         normalized_url = response.normalized_url
-        safe_filename = normalized_url.replace('/', '_').replace(':', '_')
+        safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
 
         os.makedirs(self.directory, exist_ok=True)
@@ -50,7 +51,7 @@ class FileStore(ScraperStore):
         })
 
     async def load_page(self, normalized_url: str) -> Optional[ScraperWebPage]:
-        safe_filename = normalized_url.replace('/', '_').replace(':', '_')
+        safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
 
         if not os.path.exists(filepath):
@@ -58,6 +59,11 @@ class FileStore(ScraperStore):
 
         with open(filepath, 'r', encoding='utf-8') as f:
             return self.model_load_json(f.read())
+        
+    def safe_filename(self, normalized_url: str) -> str:
+        hash = normalized_url_hash(normalized_url)
+        safe_normalized_url = normalized_url.replace('/', '_').replace(':', '_')
+        return f"{safe_normalized_url[:64]}_{hash}"
         
     def model_load_json(self, data: str) -> ScraperWebPage:
         d = json.loads(data)
