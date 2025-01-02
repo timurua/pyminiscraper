@@ -160,7 +160,7 @@ class Scraper:
             self.requested_urls_count += 1
             if page is None:
                 if self.config.use_headless_browser and self.browser_html_scraper_factory:
-                    page = await self.browser_html_scraper_factory.new_scraper().scrape(scraper_url)
+                    page = await self.browser_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
                 else:
                     page = await self.http_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
             

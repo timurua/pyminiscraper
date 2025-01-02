@@ -4,6 +4,7 @@ from .model import ScraperWebPage
 import os
 import json
 import datetime
+from dateutil import parser
 
 class FileStoreFactory(ScraperStoreFactory):
     def __init__(self, directory: str):
@@ -63,7 +64,6 @@ class FileStore(ScraperStore):
         return ScraperWebPage(
             url=d['url'],
             normalized_url=d['normalized_url'],
-            normalized_url_hash=d['normalized_url_hash'],
             status_code=d['status_code'],
             headers=d['headers'],
             content=d['content'].encode('utf-8') if d['content'] else None,
@@ -73,7 +73,7 @@ class FileStore(ScraperStore):
             metadata_title=d['metadata_title'],
             metadata_description=d['metadata_description'],
             metadata_image_url=d['metadata_image_url'],
-            metadata_published_at=datetime.fromisoformat(d['metadata_published_at']) if d['metadata_published_at'] else None,
+            metadata_published_at=parser.parse(d['metadata_published_at']) if d['metadata_published_at'] else None,
             canonical_url=d['canonical_url'],
             outgoing_urls=d['outgoing_urls'],
             visible_text=d['visible_text'],

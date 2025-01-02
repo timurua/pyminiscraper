@@ -4,7 +4,7 @@ import pathlib
 import logging
 import sys
 from .scraper import Scraper, ScraperConfig, ScraperUrl
-from .store_memory import MemoryStoreFactory
+from .store_file import FileStoreFactory
 from .scrape_html_browser import BrowserHtmlScraperFactory
 from .scrape_html_http import HttpHtmlScraperFactory
 
@@ -33,7 +33,7 @@ async def main(storage_dir: pathlib.Path):
             use_headless_browser=False,
             max_queue_size=1024*1024,
             timeout_seconds=30,
-            scraper_store_factory=MemoryStoreFactory(),
+            scraper_store_factory=FileStoreFactory(storage_dir.absolute()),
         ),
     )
     await scraper.run()
