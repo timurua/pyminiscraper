@@ -10,7 +10,7 @@ from typing import Callable, Tuple
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from .model import ScraperUrl
-from .url_normalize import normalized_url_hash
+from .url import normalized_url_hash
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 

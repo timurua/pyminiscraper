@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
+from .url import make_absolute_url
 from typing import Optional, Dict, Any, List, Set
 
 EXCLUDED_EXTENSIONS = (
@@ -47,7 +48,7 @@ class HtmlScraperProcessor:
         # Determine the canonical URL
         canonical_link = self.soup.find('link', rel='canonical')
         if canonical_link and canonical_link.get('href'):
-            canonical_url = urljoin(self.url, canonical_link['href'])
+            canonical_url = make_absolute_url(self.url, canonical_link['href'])
         else:
             canonical_url = self.url  # Default to the original URL if no canonical link is found
             
@@ -65,7 +66,7 @@ class HtmlScraperProcessor:
         sitemap_urls: List[str] = []
         for sitemap_link in sitemap_links:
             if sitemap_link and sitemap_link.get('href'):
-                sitemap_urls.append(urljoin(self.url, sitemap_link['href']))
+                sitemap_urls.append(make_absolute_url(self.url, sitemap_link['href']))
 
         # Extract outgoing URLs
         outgoing_urls: Set[str] = set()
@@ -73,7 +74,7 @@ class HtmlScraperProcessor:
             href = a_tag['href']
             if self.is_excluded_url(href):
                 continue
-            absolute_href = urljoin(self.url, href)
+            absolute_href = make_absolute_url(self.url, href)
             outgoing_urls.add(absolute_href)
 
         # Remove images from the soup to exclude them from the text

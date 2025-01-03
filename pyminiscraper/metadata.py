@@ -4,9 +4,9 @@ from w3lib.html import get_base_url
 from typing import Dict, Optional
 from datetime import datetime
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 from .model import ScraperWebPage
 from dateutil import parser
+from .url import make_absolute_url
 
 class PageMetadata:
     def __init__(self, title: str| None = None, description: str|None = None, image: str|None = None, published_at: Optional[datetime] = None)->None:
@@ -76,7 +76,7 @@ class PageMetadataExtractor:
         # Try OpenGraph
         for item in self.metadata.get('opengraph', []):
             if 'og:image' in item:
-                return urljoin(self.base_url, item['og:image'])
+                return make_absolute_url(self.base_url, item['og:image'])
 
         # Try JSON-LD
         for item in self.metadata.get('json-ld', []):
@@ -85,14 +85,14 @@ class PageMetadataExtractor:
                 if isinstance(image, list):
                     image = image[0]
                 if isinstance(image, str):
-                    return urljoin(self.base_url, image)
+                    return make_absolute_url(self.base_url, image)
                 if isinstance(image, dict) and 'url' in image:
-                    return urljoin(self.base_url, image['url'])
+                    return make_absolute_url(self.base_url, image['url'])
 
         # Fallback to first significant image
         first_img = self.soup.find('img', attrs={'src': True})
         if first_img:
-            return urljoin(self.base_url, first_img['src'])
+            return make_absolute_url(self.base_url, first_img['src'])
 
         return ''
 

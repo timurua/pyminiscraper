@@ -8,5 +8,9 @@ click>=8.1.8
 aiohttp>=3.11.11
 extruct>=0.18.0
 python-dateutil>=2.9.0
+aiolimiter>=1.2.1
+        
+        
+
 
 

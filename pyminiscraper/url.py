@@ -1,4 +1,4 @@
-from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode, urljoin
 import re
 from typing import List, Tuple
 from re import Match
@@ -157,3 +157,11 @@ def normalize_url(url:str)->str:
 def normalized_url_hash(url:str)->str:
     normalized_url = normalize_url(url)
     return generate_url_safe_id(normalized_url)
+
+def make_absolute_url(base_url, relative_url):
+    # Check if relative_url is already absolute
+    domain = urlparse(relative_url).netloc
+    if domain:
+        return relative_url
+        
+    return urljoin(base_url, relative_url)

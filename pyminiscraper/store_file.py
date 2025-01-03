@@ -5,7 +5,7 @@ import os
 import json
 import datetime
 from dateutil import parser
-from .url_normalize import normalized_url_hash
+from .url import normalized_url_hash
 
 class FileStoreFactory(ScraperStoreFactory):
     def __init__(self, directory: str):

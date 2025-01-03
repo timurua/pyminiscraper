@@ -16,7 +16,7 @@ setup(
         'aiohttp>=3.11.11',
         'extruct>=0.18.0',
         'python-dateutil>=2.9.0',
-        'asyncclick>=8.1.7.2',
+        'aiolimiter>=1.2.1',
     ],
     author="Timur Valiulin",
     author_email="timurua@gmail.com",

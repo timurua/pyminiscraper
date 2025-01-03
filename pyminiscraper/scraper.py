@@ -1,13 +1,14 @@
 import asyncio
 from typing import Optional, Dict
 import logging
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
+from .url import make_absolute_url
 from .scrape_html_http import HttpHtmlScraperFactory
 from .scrape_html_browser import BrowserHtmlScraperFactory
 from .model import ScraperWebPage, ScraperUrl
 import sys
 from .store import ScraperStore, ScraperStoreFactory
-from .url_normalize import normalize_url
+from .url import normalize_url
 from abc import ABC, abstractmethod
 from .model import ScraperUrl
 from .domain_filter import DomainFilter
@@ -16,6 +17,7 @@ from .stats import DomainStats, ScraperStats, analyze_url_groups
 from .domain_metadata import DomainMetadata
 from .sitemap import SitemapParser
 from .robots import RobotFileParser
+from aiolimiter import AsyncLimiter
 
 logger = logging.getLogger("scraper")
 
@@ -46,6 +48,7 @@ class ScraperConfig:
                 allow_l2_domains: bool = True,
                 scraper_callback: ScraperCallback | None = None,
                 max_depth: int = 16,
+                max_requests_per_hour: float = 60*60,
                 user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
                 'Chrome/115.0.0.0 Safari/537.36',):
@@ -59,6 +62,7 @@ class ScraperConfig:
         self.scraper_store_factory = scraper_store_factory
         self.scraper_callback = scraper_callback
         self.max_depth = max_depth
+        self.max_requests_per_hour = max_requests_per_hour
         self.user_agent = user_agent
 
     def log(self, text: str) -> None:
@@ -85,7 +89,8 @@ class Scraper:
             maxsize=config.max_queue_size)
         self.http_html_scraper_factory = HttpHtmlScraperFactory(user_agent=config.user_agent)
         self.browser_html_scraper_factory = BrowserHtmlScraperFactory() if self.config.use_headless_browser else None
-        
+        self.request_rate_limiter = AsyncLimiter(self.config.max_requests_per_hour, 60*60) 
+
     async def run(self) -> ScraperStats:
         for scraper_url in self.config.scraper_urls:
             await self.queue_if_allowed(scraper_url)
@@ -158,8 +163,8 @@ class Scraper:
                 self.completed_urls_count += 1
                 continue
 
-
             self.requested_urls_count += 1
+            await self.request_rate_limiter.acquire()
             if page is None:
                 if self.config.use_headless_browser and self.browser_html_scraper_factory:
                     page = await self.browser_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
@@ -201,7 +206,7 @@ class Scraper:
 
     
     async def download_domain_metadata(self, scraper_store: ScraperStore, domain_url: str) -> DomainMetadata:
-        home_page_url=urljoin(domain_url, "/")
+        home_page_url=make_absolute_url(domain_url, "/")
         logger.info(f"downloading home page {home_page_url}")
         home_page = await self.http_html_scraper_factory.new_scraper().scrape(home_page_url)
         if home_page is None:
@@ -211,7 +216,7 @@ class Scraper:
 
         home_page = await self.extract_metadata_and_save(scraper_store, home_page)
 
-        robots_url = urljoin(domain_url, "/robots.txt")
+        robots_url = make_absolute_url(domain_url, "/robots.txt")
         try:
             logger.info(f"downloading robots.txt {robots_url}")
             robot = await RobotFileParser.download_and_parse(robots_url, self.http_html_scraper_factory.client_session)

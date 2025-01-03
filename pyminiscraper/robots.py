@@ -6,7 +6,7 @@ from enum import Enum
 import aiohttp
 import logging
 import asyncio
-from .url_normalize import normalize_url
+from .url import normalize_url
 
 logger = logging.getLogger("robots")
 
