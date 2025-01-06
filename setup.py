@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 
 setup(
-    name="pyminiscaper",
+    name="pyminiscraper",
     version="0.1.1",
     packages=find_packages(),
     install_requires=[
