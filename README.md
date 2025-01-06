@@ -37,95 +37,139 @@ await scraper.run()
 
 `pyminiscraper` also provides advanced configuration options to handle more complex scraping scenarios. Below are some of the options you can configure:
 
-### Custom Headers
+### Scraper URLs
 
-You can set custom headers to mimic a real browser request:
+- **Parameter**: `scraper_urls: list[ScraperUrl]`
+- **Description**: A list of `ScraperUrl` objects that define the URLs to be scraped and their respective configurations.
+- **Example**:
+    ```python
+    scraper_urls=[
+            ScraperUrl("https://www.example.com", max_depth=2)
+    ]
+    ```
 
-```python
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
+### Max Parallel Requests
 
-scraper = Scraper('https://example.com', headers=headers)
-```
+- **Parameter**: `max_parallel_requests: int = 16`
+- **Description**: The maximum number of parallel requests that the scraper can make.
+- **Example**:
+    ```python
+    max_parallel_requests=16
+    ```
 
-### Handling Pagination
+### Use Headless Browser
 
-To scrape data from multiple pages, you can use the pagination feature:
+- **Parameter**: `use_headless_browser: bool = False`
+- **Description**: Whether to use a headless browser for scraping.
+- **Example**:
+    ```python
+    use_headless_browser=False
+    ```
 
-```python
-scraper = Scraper('https://example.com/page/{}')
+### Timeout Seconds
 
-for page in range(1, 6):
-    data = scraper.extract({
-        'title': 'h1',
-        'description': 'meta[name="description"]::attr(content)'
-    }, page=page)
-    print(data)
-```
+- **Parameter**: `timeout_seconds: int = 30`
+- **Description**: The timeout duration in seconds for each request.
+- **Example**:
+    ```python
+    timeout_seconds=30
+    ```
 
-### Using Proxies
+### Only Sitemaps
 
-If you need to use a proxy to avoid IP blocking, you can configure it as follows:
+- **Parameter**: `only_sitemaps: bool = True`
+- **Description**: Whether to scrape only sitemap URLs.
+- **Example**:
+    ```python
+    only_sitemaps=True
+    ```
 
-```python
-proxies = {
-    'http': 'http://10.10.1.10:3128',
-    'https': 'http://10.10.1.10:1080',
-}
+### Max Requested URLs
 
-scraper = Scraper('https://example.com', proxies=proxies)
-```
+- **Parameter**: `max_requested_urls: int = 64 * 1024`
+- **Description**: The maximum number of URLs that can be requested.
+- **Example**:
+    ```python
+    max_requested_urls=64 * 1024
+    ```
 
-### Error Handling
+### Max Back-to-Back Errors
 
-You can handle errors gracefully using the built-in error handling mechanism:
+- **Parameter**: `max_back_to_back_errors: int = 128`
+- **Description**: The maximum number of consecutive errors allowed before stopping the scraper.
+- **Example**:
+    ```python
+    max_back_to_back_errors=128
+    ```
 
-```python
+### Scraper Store Factory
 
-storage_dir.mkdir(parents=True, exist_ok=True)
+- **Parameter**: `scraper_store_factory: ScraperStoreFactory`
+- **Description**: The factory used to create the storage for scraped data.
+- **Example**:
+    ```python
+    scraper_store_factory=FileStoreFactory("/path/to/storage")
+    ```
 
-scraper = Scraper(
-    ScraperConfig(
-        scraper_urls=[
-            ScraperUrl(
-                "https://www.anthropic.com/news", max_depth=2)
-        ],
-        max_parallel_requests=16,
-        use_headless_browser=False,
-        timeout_seconds=30,
-        max_requests_per_hour=6*60,
-        only_sitemaps=False,
-        scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
-    ),
-)
-await scraper.run()
+### Allow L2 Domains
 
-```
+- **Parameter**: `allow_l2_domains: bool = True`
+- **Description**: Whether to allow scraping of second-level domains.
+- **Example**:
+    ```python
+    allow_l2_domains=True
+    ```
 
-### Scraper Configuration
+### Scraper Callback
 
-You can configure the scraper using the `ScraperConfig` class to handle various advanced settings:
+- **Parameter**: `scraper_callback: ScraperCallback | None = None`
+- **Description**: A callback function that is called after each scraping operation.
+- **Example**:
+    ```python
+    scraper_callback=my_callback_function
+    ```
 
-```python
-from pyminiscraper import ScraperConfig, ScraperUrl, ScraperStoreFactory, ScraperCallback
+### Max Depth
 
-config = ScraperConfig(
-    scraper_urls=[ScraperUrl('https://example.com')],
-    max_parallel_requests=16,
-    use_headless_browser=False,
-    timeout_seconds=30,
-    only_sitemaps=True,
-    max_requested_urls=64 * 1024,
-    max_back_to_back_errors=128,
-    scraper_store_factory=ScraperStoreFactory(),
-    allow_l2_domains=True,
-    scraper_callback=None,
-    max_depth=16,
-    max_requests_per_hour=60*60*10,
-    rerequest_after_hours=24,
+- **Parameter**: `max_depth: int = 16`
+- **Description**: The maximum depth to follow links from the initial URL.
+- **Example**:
+    ```python
+    max_depth=16
+    ```
+
+### Max Requests Per Hour
+
+- **Parameter**: `max_requests_per_hour: float = 60*60*10`
+- **Description**: The maximum number of requests allowed per hour.
+- **Example**:
+    ```python
+    max_requests_per_hour=60*60*10
+    ```
+
+### Rerequest After Hours
+
+- **Parameter**: `rerequest_after_hours: int = 24`
+- **Description**: The number of hours to wait before re-requesting a URL.
+- **Example**:
+    ```python
+    rerequest_after_hours=24
+    ```
+
+### No Page Store
+
+- **Parameter**: `no_page_store: bool = False`
+- **Description**: Whether to disable storing the scraped pages.
+- **Example**:
+    ```python
+    no_page_store=False
+    ```
+
+### User Agent
+
+- **Parameter**: `user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'`
+- **Description**: The user agent string to use for requests.
+- **Example**:
+    ```python
     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-)
-```
-
-With these advanced options, `pyminiscraper` allows you to customize your scraping tasks to fit your specific needs.
+    ```
