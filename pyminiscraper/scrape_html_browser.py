@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 import logging
+import time
 
 logger = logging.getLogger("broswer_html_scraper")
 
@@ -80,10 +81,13 @@ class BrowserHtmlScraper:
         loop = asyncio.get_event_loop()
         try:
             driver = self.driver_get()
+            
             def get_driver_data()-> Tuple[str, str, str]:
-                WebDriverWait(driver, 10).until(
-                    expected_conditions.presence_of_element_located(("tag name", "body"))
-                )
+                driver.get(normalized_url)
+                # WebDriverWait(driver, 10).until(
+                #     expected_conditions.presence_of_element_located(("tag name", "body"))
+                # )
+                time.sleep(5)
                 elements = driver.find_elements(By.XPATH, "//*")
                 def is_displayed(element):
                     try:

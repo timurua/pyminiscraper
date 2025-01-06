@@ -25,6 +25,7 @@ class ScraperConfig:
                 max_depth: int = 16,
                 max_requests_per_hour: float = 60*60*10,
                 rerequest_after_hours: int = 24,
+                no_page_store: bool = False,
                 user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
                 'Chrome/115.0.0.0 Safari/537.36',):
@@ -41,7 +42,10 @@ class ScraperConfig:
         self.max_requests_per_hour = max_requests_per_hour
         self.user_agent = user_agent
         self.max_back_to_back_errors = max_back_to_back_errors
-        self.rerequest_after_hours = rerequest_after_hours
+        if no_page_store:
+            self.rerequest_after_hours = 0
+        else:
+            self.rerequest_after_hours = rerequest_after_hours
 
     def log(self, text: str) -> None:
         logger.info(text)

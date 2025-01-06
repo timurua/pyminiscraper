@@ -9,18 +9,28 @@
 Here is a basic example of how to use `pyminiscraper` to scrape data from a web page:
 
 ```python
-from pyminiscraper import Scraper
+from pyminiscraper.scraper import Scraper
+from pyminiscraper.config import ScraperConfig
 
-# Initialize the scraper with the target URL
-scraper = Scraper('https://example.com')
+storage_dir.mkdir(parents=True, exist_ok=True)
+click.echo(f"Storage directory set to: {storage_dir}")
 
-# Extract data using CSS selectors
-data = scraper.extract({
-    'title': 'h1',
-    'description': 'meta[name="description"]::attr(content)'
-})
+scraper = Scraper(
+    ScraperConfig(
+        scraper_urls=[
+            ScraperUrl(
+                "https://www.anthropic.com/news", max_depth=2)
+        ],
+        max_parallel_requests=16,
+        use_headless_browser=False,
+        timeout_seconds=30,
+        max_requests_per_hour=6*60,
+        only_sitemaps=False,
+        scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
+    ),
+)
+await scraper.run()
 
-print(data)
 ```
 
 ## Advanced Configuration Options
@@ -72,14 +82,50 @@ scraper = Scraper('https://example.com', proxies=proxies)
 You can handle errors gracefully using the built-in error handling mechanism:
 
 ```python
-try:
-    scraper = Scraper('https://example.com')
-    data = scraper.extract({
-        'title': 'h1',
-        'description': 'meta[name="description"]::attr(content)'
-    })
-except Exception as e:
-    print(f"An error occurred: {e}")
+
+storage_dir.mkdir(parents=True, exist_ok=True)
+
+scraper = Scraper(
+    ScraperConfig(
+        scraper_urls=[
+            ScraperUrl(
+                "https://www.anthropic.com/news", max_depth=2)
+        ],
+        max_parallel_requests=16,
+        use_headless_browser=False,
+        timeout_seconds=30,
+        max_requests_per_hour=6*60,
+        only_sitemaps=False,
+        scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
+    ),
+)
+await scraper.run()
+
+```
+
+### Scraper Configuration
+
+You can configure the scraper using the `ScraperConfig` class to handle various advanced settings:
+
+```python
+from pyminiscraper import ScraperConfig, ScraperUrl, ScraperStoreFactory, ScraperCallback
+
+config = ScraperConfig(
+    scraper_urls=[ScraperUrl('https://example.com')],
+    max_parallel_requests=16,
+    use_headless_browser=False,
+    timeout_seconds=30,
+    only_sitemaps=True,
+    max_requested_urls=64 * 1024,
+    max_back_to_back_errors=128,
+    scraper_store_factory=ScraperStoreFactory(),
+    allow_l2_domains=True,
+    scraper_callback=None,
+    max_depth=16,
+    max_requests_per_hour=60*60*10,
+    rerequest_after_hours=24,
+    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+)
 ```
 
 With these advanced options, `pyminiscraper` allows you to customize your scraping tasks to fit your specific needs.
