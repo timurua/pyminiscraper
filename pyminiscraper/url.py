@@ -82,8 +82,8 @@ def normalize_usually_preserving_semantics(url: str) -> str:
     path = parsed_url.path
 
     # Add trailing "/" to a non-empty path if not present
-    if path and not path.endswith('/'):
-        path += '/'
+    # if path and not path.endswith('/'):
+    #     path += '/'
 
     # Reconstruct the URL
     normalized_url = urlunparse((

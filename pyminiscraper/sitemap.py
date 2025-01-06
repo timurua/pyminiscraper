@@ -39,7 +39,7 @@ class PageUrl:
         self.changefreq = changefreq
         self.priority = priority        
 
-class SitemapParser:
+class Sitemap:
     def __init__(self) -> None:
         self.page_urls: List[PageUrl] = []
         self.sitemap_urls: List[SitemapUrl] = []
@@ -92,7 +92,7 @@ class SitemapParser:
         return sitemaps
 
     @classmethod
-    async def download_and_parse(cls, normalized_url: str, session: aiohttp.ClientSession, timeout_seconds: int = 30) -> Optional["SitemapParser"] :
+    async def download_and_parse(cls, normalized_url: str, session: aiohttp.ClientSession, timeout_seconds: int = 30) -> "Sitemap":
         """Downloads sitemap from URL and returns parsed result"""
         
         try:

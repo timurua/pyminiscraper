@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-from .robots import RobotFileParser, AccessRule
+from .robots import Robot, AccessRule
 
 class DomainFilter:
     def __init__(self, allow_l2_domains: bool, urls: list[str])-> None:

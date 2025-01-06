@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime
-from pyminiscraper.sitemap import SitemapParser, PageUrl, SitemapUrl, ChangeFrequency
+from pyminiscraper.sitemap import Sitemap, PageUrl, SitemapUrl, ChangeFrequency
 import aiohttp
 from aioresponses import aioresponses
-from pyminiscraper.sitemap import SitemapParser, ChangeFrequency
+from pyminiscraper.sitemap import Sitemap, ChangeFrequency
 
 def test_parse_urlset():
     xml_content = """
@@ -16,7 +16,7 @@ def test_parse_urlset():
         </url>
     </urlset>
     """
-    parser = SitemapParser()
+    parser = Sitemap()
     parser.parse(xml_content)
     
     assert len(parser.page_urls) == 1
@@ -35,7 +35,7 @@ def test_parse_sitemapindex():
         </sitemap>
     </sitemapindex>
     """
-    parser = SitemapParser()
+    parser = Sitemap()
     parser.parse(xml_content)
     
     assert len(parser.sitemap_urls) == 1
@@ -48,7 +48,7 @@ def test_parse_invalid_format():
     <invalidtag>
     </invalidtag>
     """
-    parser = SitemapParser()
+    parser = Sitemap()
     with pytest.raises(ValueError, match="Unsupported XML format"):
         parser.parse(xml_content)
 
@@ -70,7 +70,7 @@ async def test_download_and_parse_success():
         m.get(url, status=200, body=xml_content)
         
         async with aiohttp.ClientSession() as session:
-            parser = await SitemapParser.download_and_parse(url, session)
+            parser = await Sitemap.download_and_parse(url, session)
             
             assert len(parser.page_urls) == 1
             page_url = parser.page_urls[0]
@@ -88,7 +88,7 @@ async def test_download_and_parse_failure():
         
         async with aiohttp.ClientSession() as session:
             with pytest.raises(ValueError, match="Failed to download sitemap: 404"):
-                await SitemapParser.download_and_parse(url, session)
+                await Sitemap.download_and_parse(url, session)
 
 @pytest.mark.asyncio
 async def test_download_and_parse_client_error():
@@ -99,4 +99,4 @@ async def test_download_and_parse_client_error():
         
         async with aiohttp.ClientSession() as session:
             with pytest.raises(ValueError, match="Failed to download sitemap: Connection error"):
-                await SitemapParser.download_and_parse(url, session)
+                await Sitemap.download_and_parse(url, session)

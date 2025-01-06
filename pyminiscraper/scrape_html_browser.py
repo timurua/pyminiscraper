@@ -13,8 +13,14 @@ from .model import ScraperUrl
 from .url import normalized_url_hash
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
+import logging
+
+logger = logging.getLogger("broswer_html_scraper")
 
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=64)
+
+class BrowserHtmlScraperError(Exception):
+    pass
 
 
 class BrowserHtmlScraperFactory:
@@ -74,7 +80,7 @@ class BrowserHtmlScraper:
         self.driver_get = driver_get
         self.driver_return = driver_return
 
-    async def scrape(self, normalized_url: str) -> ScraperWebPage|None:
+    async def scrape(self, normalized_url: str) -> ScraperWebPage:
         loop = asyncio.get_event_loop()
         try:
             driver = self.driver_get()
@@ -99,6 +105,10 @@ class BrowserHtmlScraper:
             html = data[0]
             visible_text = data[1]
             title = data[2]
+
+        except Exception as e: 
+            logger.info(f"Failed to fetch page: {normalized_url}")
+            raise BrowserHtmlScraperError(f"""Failed to fetch page: {normalized_url}""") from e                    
             
         finally:
             if driver:
@@ -107,6 +117,7 @@ class BrowserHtmlScraper:
         page = ScraperWebPage(
             status_code=200,
             headers=None,
+            metadata_title=title,
             content=html.encode("utf-8"),
             visible_text=visible_text,
             content_type="text/html",
@@ -114,6 +125,5 @@ class BrowserHtmlScraper:
             headless_browser=True,
             url=normalized_url,
             normalized_url=normalized_url,
-            normalized_url_hash=normalized_url_hash(normalized_url),
         )
         return page

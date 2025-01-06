@@ -25,15 +25,15 @@ class AccessRule(Enum):
     DISALLOW_ALL = 2
     DEFAULT = 3
 
-class RobotFileParser:
+class Robot:
     def __init__(self):
         self.entries: List[Entry] = []
-        self.sitemap_normalized_urls: set[str] = set()
+        self.sitemap_urls: set[str] = set()
         self.default_entry: Optional[Entry] = None
         self.access_rule: AccessRule = AccessRule.ALLOW_ALL
 
     @classmethod
-    async def download_and_parse(cls, normalized_url: str, client_session: aiohttp.ClientSession, timeout_seconds: int = 30) -> Optional["RobotFileParser"]:
+    async def download_and_parse(cls, normalized_url: str, client_session: aiohttp.ClientSession, timeout_seconds: int = 30) -> "Robot":
         try:
             async with client_session.get(normalized_url, timeout=aiohttp.ClientTimeout(total=timeout_seconds)) as http_response:
                 robots = cls()
@@ -102,7 +102,7 @@ class RobotFileParser:
                         entry.req_rate = RequestRate(int(numbers[0]), int(numbers[1]))
                     state = ParseState.RULES
             elif line[0] == "sitemap":
-                self.sitemap_normalized_urls.add(normalize_url(line[1]))
+                self.sitemap_urls.add(line[1])
         if state == ParseState.RULES:
             self._add_entry(entry)
 
@@ -141,10 +141,8 @@ class RobotFileParser:
             return self.default_entry.req_rate
         return None
 
-    def site_maps(self) -> Optional[List[str]]:
-        if not self.sitemap_normalized_urls:
-            return None
-        return self.sitemap_normalized_urls
+    def site_maps(self) -> Optional[set[str]]:
+        return self.sitemap_urls
 
     def __str__(self) -> str:
         entries = self.entries

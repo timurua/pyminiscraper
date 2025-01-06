@@ -3,20 +3,28 @@ from dataclasses import dataclass
 from datetime import datetime
 from .hash import generate_url_safe_id
 from .url import normalize_url, normalized_url_hash as do_normalized_url_hash
+from enum import Enum
+
+class ScraperUrlType(Enum):
+    HTML = 0
+    SITEMAP = 1
+    TERMINATE_LOOP = -1
 
 class ScraperUrl:
-    def __init__(self, url: str, *, no_cache: bool = False, max_depth: int = 16):
+    def __init__(self, url: str, *, no_cache: bool = False, max_depth: int = 16, type: ScraperUrlType = ScraperUrlType.HTML, high_priority: bool = False):
         self.url = url
         self.normalized_url = normalize_url(url)
         self.no_cache = no_cache
         self.max_depth = max_depth
+        self.type = type
+        self.high_priority = high_priority
 
     @staticmethod
     def create_terminal():
-        return ScraperUrl("", max_depth = -1)
+        return ScraperUrl("", type=ScraperUrlType.TERMINATE_LOOP)
 
     def is_terminal(self):
-        return self.max_depth < 0
+        return self.type == ScraperUrlType.TERMINATE_LOOP
 
 @dataclass
 class ScraperWebPage:

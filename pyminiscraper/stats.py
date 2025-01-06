@@ -20,9 +20,11 @@ class ScraperStats:
     # total_urls: number;
     # total_text_chunks: number;
 
-    initiated_urls_count: int
+    queued_urls_count: int
     requested_urls_count: int
-    completed_urls_count: int
+    success_urls_count: int
+    error_urls_count: int
+    skipped_urls_count: int
     domain_stats: Dict[str, DomainStats]
 
 def analyze_url_groups(urls: List[str], min_pages_per_sub_path: int = 5) -> Dict[str, DomainStats]:

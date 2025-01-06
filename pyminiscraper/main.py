@@ -31,9 +31,10 @@ async def main(storage_dir: pathlib.Path):
             ],
             max_parallel_requests=16,
             use_headless_browser=False,
-            max_queue_size=1024*1024,
             timeout_seconds=30,
-            scraper_store_factory=FileStoreFactory(storage_dir.absolute()),
+            max_requests_per_hour=6*60,
+            only_sitemaps=False,
+            scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
         ),
     )
     await scraper.run()

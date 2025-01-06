@@ -1,24 +1,24 @@
 import pytest
-from pyminiscraper.robots import RobotFileParser, RuleLine, Entry, AccessRule
+from pyminiscraper.robots import Robot, RuleLine, Entry, AccessRule
 import aiohttp
 import asyncio
-from pyminiscraper.robots import RobotFileParser, AccessRule
+from pyminiscraper.robots import Robot, AccessRule
 from aioresponses import aioresponses
 
 def test_robot_file_parser_initialization():
-    parser = RobotFileParser()
+    parser = Robot()
     assert parser.entries == []
-    assert parser.sitemap_normalized_urls == []
+    assert parser.sitemap_urls == set([])
     assert parser.default_entry is None
     assert parser.access_rule == AccessRule.ALLOW_ALL
 
 def test_robot_file_parser_can_fetch_disallow_all():
-    parser = RobotFileParser()
+    parser = Robot()
     parser.access_rule = AccessRule.DISALLOW_ALL
     assert parser.can_fetch("*", "/") is False
 
 def test_robot_file_parser_can_fetch_allow_all():
-    parser = RobotFileParser()
+    parser = Robot()
     parser.access_rule = AccessRule.ALLOW_ALL
     assert parser.can_fetch("*", "/") is True
 
@@ -55,7 +55,7 @@ def test_entry_allowance():
     assert entry.allowance("/other") is False
 
 def test_robot_file_parser_parse_empty_lines():
-    parser = RobotFileParser()
+    parser = Robot()
     lines = """
     User-agent: *
     
@@ -76,22 +76,24 @@ def test_robot_file_parser_parse_empty_lines():
     parser.parse(lines)
 
     assert len(parser.entries) == 1
+    assert parser.default_entry is not None
     assert parser.default_entry.useragents == ["*"]
     assert parser.default_entry.rulelines[0].path == "/private"
     assert parser.default_entry.rulelines[0].allowance is False
     assert parser.default_entry.rulelines[1].path == "/public"
     assert parser.default_entry.rulelines[1].allowance is True
     assert parser.default_entry.delay == 10
+    assert parser.default_entry.req_rate is not None
     assert parser.default_entry.req_rate.requests == 1
     assert parser.default_entry.req_rate.seconds == 5
-    assert parser.sitemap_normalized_urls == ["http://example.com/sitemap.xml"]
+    assert parser.sitemap_urls == set(["http://example.com/sitemap.xml"])
 
     assert parser.entries[0].useragents == ["test-agent"]
     assert parser.entries[0].rulelines[0].path == "/test"
     assert parser.entries[0].rulelines[0].allowance is False
 
 def test_robot_file_parser_parse_comments():
-    parser = RobotFileParser()
+    parser = Robot()
     content = """
     # This is a comment
     User-agent: *
@@ -108,15 +110,17 @@ def test_robot_file_parser_parse_comments():
     parser.parse(content)
 
     assert len(parser.entries) == 1
+    assert parser.default_entry is not None
     assert parser.default_entry.useragents == ["*"]
     assert parser.default_entry.rulelines[0].path == "/private"
     assert parser.default_entry.rulelines[0].allowance is False
     assert parser.default_entry.rulelines[1].path == "/public"
     assert parser.default_entry.rulelines[1].allowance is True
     assert parser.default_entry.delay == 10
+    assert parser.default_entry.req_rate is not None
     assert parser.default_entry.req_rate.requests == 1
     assert parser.default_entry.req_rate.seconds == 5
-    assert parser.sitemap_normalized_urls == ["http://example.com/sitemap.xml"]
+    assert parser.sitemap_urls == set(["http://example.com/sitemap.xml"])
 
     assert parser.entries[0].useragents == ["test-agent"]
     assert parser.entries[0].rulelines[0].path == "/test"
@@ -134,7 +138,7 @@ async def test_download_and_parse_disallow_all():
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", status=403, body="")
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser.access_rule == AccessRule.DISALLOW_ALL
 
 @pytest.mark.asyncio
@@ -142,7 +146,7 @@ async def test_download_and_parse_allow_all():
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", status=404, body="")
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser.access_rule == AccessRule.ALLOW_ALL
 
 @pytest.mark.asyncio
@@ -153,8 +157,9 @@ async def test_download_and_parse_parse_content():
             Disallow: /private
         """)
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser.access_rule == AccessRule.ALLOW_ALL
+            assert parser.default_entry is not None
             assert parser.default_entry.useragents == ["*"]
             assert parser.default_entry.rulelines[0].path == "/private"
             assert parser.default_entry.rulelines[0].allowance is False
@@ -164,7 +169,7 @@ async def test_download_and_parse_client_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", exception=aiohttp.ClientError("Client error"))
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser is None
             
 @pytest.mark.asyncio
@@ -172,7 +177,7 @@ async def test_download_and_parse_timeout_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", exception=asyncio.TimeoutError("Timeout error"))
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser is None
 
 @pytest.mark.asyncio
@@ -180,5 +185,5 @@ async def test_download_and_parse_unicode_decode_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", status=200, body=b"\x80\x81")
         async with aiohttp.ClientSession() as session:
-            parser = await RobotFileParser.download_and_parse("http://example.com/robots.txt", session)
+            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
             assert parser is None
