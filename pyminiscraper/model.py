@@ -37,6 +37,7 @@ class ScraperWebPage:
     content: bytes | None
     content_type: str | None
     content_charset: str | None = None
+    requested_at: datetime | None = None
 
     headless_browser: bool = False
 
@@ -71,6 +72,7 @@ class ScraperWebPage:
                 sitemap_urls: list[str] | None = None,
                 robots_content: list[str] | None = None,
                 text_chunks: list[str] | None = None,
+                requested_at: datetime | None = None
                 ):
         self.status_code = status_code
         self.url = url
@@ -91,6 +93,7 @@ class ScraperWebPage:
         self.sitemap_urls = sitemap_urls
         self.robots_content = robots_content
         self.text_chunks = text_chunks
+        self.requested_at = requested_at
 
 
         

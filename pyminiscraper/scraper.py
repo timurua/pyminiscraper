@@ -18,52 +18,13 @@ from .sitemap import Sitemap
 from .robots import Robot
 from aiolimiter import AsyncLimiter
 from .deque import AsyncDeque
+from .config import ScraperConfig
+from datetime import datetime
 
 logger = logging.getLogger("scraper")
 
 class ScraperError(Exception):
     pass
-
-class ScraperCallback(ABC):
-    @abstractmethod
-    def on_log(self, text: str) -> None:
-        pass
-
-class ScraperConfig:
-    def __init__(self, *, scraper_urls: list[ScraperUrl],
-                max_parallel_requests: int = 16,
-                use_headless_browser: bool = False,
-                timeout_seconds: int = 30,
-                only_sitemaps: bool = True,
-                max_requested_urls: int = 64 * 1024,
-                max_back_to_back_errors: int = 128,
-                scraper_store_factory: ScraperStoreFactory,
-                allow_l2_domains: bool = True,
-                scraper_callback: ScraperCallback | None = None,
-                max_depth: int = 16,
-                max_requests_per_hour: float = 60*60,
-                user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/115.0.0.0 Safari/537.36',):
-        self.scraper_urls = scraper_urls
-        self.max_parallel_requests = max_parallel_requests
-        self.domain_filter = DomainFilter(allow_l2_domains, [url.url for url in scraper_urls])
-        self.use_headless_browser = use_headless_browser
-        self.timeout_seconds = timeout_seconds
-        self.only_sitemaps = only_sitemaps
-        self.max_requested_urls = max_requested_urls
-        self.scraper_store_factory = scraper_store_factory
-        self.scraper_callback = scraper_callback
-        self.max_depth = max_depth
-        self.max_requests_per_hour = max_requests_per_hour
-        self.user_agent = user_agent
-        self.max_back_to_back_errors = max_back_to_back_errors
-
-    def log(self, text: str) -> None:
-        logger.info(text)
-        if self.scraper_callback:
-            self.scraper_callback.on_log(text)
-
 
 class ScraperLoopResult:
     def __init__(self, completed_url_count: int):
@@ -82,7 +43,7 @@ class Scraper:
         self.url_queue: AsyncDeque[ScraperUrl] = AsyncDeque()
         self.http_html_scraper_factory = HttpHtmlScraperFactory(user_agent=config.user_agent)
         self.browser_html_scraper_factory = BrowserHtmlScraperFactory() if self.config.use_headless_browser else None
-        self.request_rate_limiter = AsyncLimiter(self.config.max_requests_per_hour, 60*60)
+        self.request_rate_limiter = AsyncLimiter(self.config.max_requests_per_hour, float(60*60))
         self.back_to_back_errors = 0
         self.sitemaps: dict[str, Sitemap] = {}
 
@@ -98,6 +59,7 @@ class Scraper:
         await asyncio.gather(*tasks)
 
         domain_stats = analyze_url_groups(list(self.queued_urls), min_pages_per_sub_path=5)
+        await self.close()       
         return ScraperStats(
             queued_urls_count=len(self.queued_urls),
             requested_urls_count=self.requested_urls_count,
@@ -105,7 +67,7 @@ class Scraper:
             error_urls_count=self.error_urls_count,
             skipped_urls_count=self.skipped_urls_count,
             domain_stats=domain_stats
-        )        
+        )         
 
     async def close(self):
         if self.http_html_scraper_factory:
@@ -132,11 +94,11 @@ class Scraper:
             
             self.config.log(f"scraping url - {self.looper_context(looper_name)} - {self.url_context(scraper_url)}")
 
-            domain_metadata = await self.get_domain_metadata(scraper_store, scraper_url)
+            domain_metadata = await self.get_domain_metadata(scraper_url)
             
             if not domain_metadata.robots.can_fetch(self.config.user_agent, scraper_url.normalized_url):
                 logger.info(
-                    f"url not allowed for scraping - {self.looper_context(looper_name)} - url: {scraper_url.normalized_url}")
+                    f"url not allowed for scraping - {self.looper_context(looper_name)} - {self.url_context(scraper_url)}")
                 self.skipped_urls_count += 1
                 continue
 
@@ -185,10 +147,9 @@ class Scraper:
         if (not scraper_url.no_cache) and scraper_store:
             page = await scraper_store.load_page(scraper_url.normalized_url)
             if page is not None:
-                logger.info(f'page was loaded from store {scraper_url.normalized_url}')
-
-        if page is not None:
-            return page
+                logger.info(f'page was loaded from store {self.url_context(scraper_url)}')
+                if page.requested_at and (datetime.now() - page.requested_at).total_seconds() < self.config.rerequest_after_hours * 60 * 60:
+                    return page
         
         try:
             if self.config.use_headless_browser and self.browser_html_scraper_factory:
@@ -197,15 +158,16 @@ class Scraper:
                 page = await self.http_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
             self.back_to_back_errors = 0
             page = await self.extract_metadata_and_save(scraper_store, page)
+            page.requested_at = datetime.now()
             return page
 
         except Exception as e:
-            logger.warning(f"Failed to fetch page {scraper_url.normalized_url}")
+            logger.warning(f"Failed to fetch page {self.url_context(scraper_url)}")
             self.back_to_back_errors += 1
             if self.back_to_back_errors >= self.config.max_back_to_back_errors:
                 logger.error(f"Terminating due to maximum back to back errors reached")
                 await self.stop()
-            raise ScraperError(f"Failed to fetch page {scraper_url.normalized_url}") from e
+            raise ScraperError(f"Failed to fetch page {self.url_context(scraper_url)}") from e
     
     async def enqueu_page_urls(self, url: ScraperUrl, page: ScraperWebPage)-> None:
         for sitemap_url in page.sitemap_urls or []:
@@ -220,7 +182,7 @@ class Scraper:
         
 
     
-    async def get_domain_metadata(self, scraper_store: ScraperStore, scraper_url: ScraperUrl) -> DomainMetadata:
+    async def get_domain_metadata(self, scraper_url: ScraperUrl) -> DomainMetadata:
         normalized_url_parsed = urlparse(scraper_url.normalized_url)
         domain_metadata_task = self.domain_metadata.get(normalized_url_parsed.netloc)
         if domain_metadata_task is not None:
@@ -228,12 +190,12 @@ class Scraper:
         
         domain_url = f"{normalized_url_parsed.scheme}://{normalized_url_parsed.netloc}"
         logger.info(f"downloading domain metadata {domain_url}")
-        domain_metadata_task = asyncio.create_task(self.download_domain_metadata(scraper_store, domain_url))
+        domain_metadata_task = asyncio.create_task(self.download_domain_metadata(domain_url))
         self.domain_metadata[normalized_url_parsed.netloc] = domain_metadata_task
         return await domain_metadata_task
 
     
-    async def download_domain_metadata(self, scraper_store: ScraperStore, domain_url: str) -> DomainMetadata:
+    async def download_domain_metadata(self, domain_url: str) -> DomainMetadata:
         robots_url = make_absolute_url(domain_url, "/robots.txt")
         try:
             logger.info(f"downloading robots.txt {robots_url}")
@@ -259,7 +221,7 @@ class Scraper:
         if outgoing_scraper_url.normalized_url in self.queued_urls:
             return
         if not self.is_domain_allowed(outgoing_scraper_url.normalized_url):
-            logger.info(f"skipping url before queueing - {self.looper_context('')} - url: {self.url_context(outgoing_scraper_url)}")
+            logger.info(f"skipping url before queueing - {self.looper_context('')} - {self.url_context(outgoing_scraper_url)}")
             return
                 
         logger.info(f"queueing - {self.looper_context('')} - url: {self.url_context(outgoing_scraper_url)}")
@@ -278,7 +240,7 @@ class Scraper:
             return
         logger.info(
             f"terminating all loops - {self.looper_context(name)}")
-        await self.stop();
+        await self.stop()
         
     async def stop(self):
         for _ in range(self.config.max_parallel_requests):

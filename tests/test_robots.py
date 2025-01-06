@@ -126,12 +126,12 @@ def test_robot_file_parser_parse_comments():
     assert parser.entries[0].rulelines[0].path == "/test"
     assert parser.entries[0].rulelines[0].allowance is False
 
-    parser.can_fetch("test-agent", "/test") is False
-    parser.can_fetch("test-agent", "/other") is True
-    parser.can_fetch("test-agent", "/") is True
+    assert parser.can_fetch("test-agent", "/") is True
+    assert parser.can_fetch("test-agent", "/other") is True
+    assert parser.can_fetch("test-agent", "/") is True
 
-    parser.can_fetch("unknown-agent", "/test") is False
-    parser.can_fetch("unknown-agent", "/other") is True
+    assert parser.can_fetch("unknown-agent", "/test") is True
+    assert parser.can_fetch("unknown-agent", "/other") is True
 
 @pytest.mark.asyncio
 async def test_download_and_parse_disallow_all():

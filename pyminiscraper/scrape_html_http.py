@@ -1,9 +1,8 @@
-import asyncio
 import aiohttp
 from typing import Optional
 import logging
 from .model import ScraperWebPage
-from .model import ScraperUrl
+from datetime import datetime
 
 class HttpHtmlScraperError(Exception):
     pass
@@ -33,6 +32,7 @@ class HttpHtmlScraper:
                     content_charset="utf-8",                    
                     url=normalized_url,
                     normalized_url=normalized_url,
+                    requested_at=datetime.now(),
                 )
                 return page
         except Exception as e: 
