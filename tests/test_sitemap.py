@@ -3,7 +3,7 @@ from datetime import datetime
 from pyminiscraper.sitemap import Sitemap, PageUrl, SitemapUrl, ChangeFrequency
 import aiohttp
 from aioresponses import aioresponses
-from pyminiscraper.sitemap import Sitemap, ChangeFrequency
+from pyminiscraper.sitemap import Sitemap, ChangeFrequency, SitemapError
 
 def test_parse_urlset():
     xml_content = """
@@ -87,7 +87,7 @@ async def test_download_and_parse_failure():
         m.get(url, status=404)
         
         async with aiohttp.ClientSession() as session:
-            with pytest.raises(ValueError, match="Failed to download sitemap: 404"):
+            with pytest.raises(SitemapError):
                 await Sitemap.download_and_parse(url, session)
 
 @pytest.mark.asyncio
@@ -98,5 +98,5 @@ async def test_download_and_parse_client_error():
         m.get(url, exception=aiohttp.ClientError("Connection error"))
         
         async with aiohttp.ClientSession() as session:
-            with pytest.raises(ValueError, match="Failed to download sitemap: Connection error"):
+            with pytest.raises(SitemapError):
                 await Sitemap.download_and_parse(url, session)

@@ -2,7 +2,7 @@ import pytest
 from pyminiscraper.robots import Robot, RuleLine, Entry, AccessRule
 import aiohttp
 import asyncio
-from pyminiscraper.robots import Robot, AccessRule
+from pyminiscraper.robots import Robot, AccessRule, RobotsError
 from aioresponses import aioresponses
 
 def test_robot_file_parser_initialization():
@@ -169,21 +169,21 @@ async def test_download_and_parse_client_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", exception=aiohttp.ClientError("Client error"))
         async with aiohttp.ClientSession() as session:
-            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
-            assert parser is None
+            with pytest.raises(RobotsError):
+                await Robot.download_and_parse("http://example.com/robots.txt", session)
             
 @pytest.mark.asyncio
 async def test_download_and_parse_timeout_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", exception=asyncio.TimeoutError("Timeout error"))
         async with aiohttp.ClientSession() as session:
-            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
-            assert parser is None
+            with pytest.raises(RobotsError):
+                await Robot.download_and_parse("http://example.com/robots.txt", session)
 
 @pytest.mark.asyncio
 async def test_download_and_parse_unicode_decode_error(caplog):
     with aioresponses() as m:
         m.get("http://example.com/robots.txt", status=200, body=b"\x80\x81")
         async with aiohttp.ClientSession() as session:
-            parser = await Robot.download_and_parse("http://example.com/robots.txt", session)
-            assert parser is None
+            with pytest.raises(RobotsError):
+                await Robot.download_and_parse("http://example.com/robots.txt", session)
