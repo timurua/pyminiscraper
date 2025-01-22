@@ -42,16 +42,11 @@ class HttpHtmlScraper:
 
 
 class HttpHtmlScraperFactory:
-    def __init__(self, *, timeout_seconds: int = 30, user_agent: str):
-        self.client_session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(ssl=False),
-            headers={
-                'User-Agent': user_agent
-            })
-        self.timeout_seconds = timeout_seconds
+    def __init__(self, client_session: aiohttp.ClientSession):
+        self.client_session = client_session
 
     async def close(self) -> None:
         await self.client_session.close()
 
     def new_scraper(self) -> HttpHtmlScraper:
-        return HttpHtmlScraper(self.client_session, self.timeout_seconds)
+        return HttpHtmlScraper(self.client_session)

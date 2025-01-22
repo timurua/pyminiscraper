@@ -1,53 +1,75 @@
 from abc import ABC, abstractmethod
-from .model import ScraperUrl
+from .model import ScraperUrl, ScraperWebPage
 from .store import ScraperStoreFactory
-from .domain_filter import DomainFilter
 import logging
+from enum import Enum
 
 logger = logging.getLogger("config")
 
-class ScraperCallback(ABC):
+class ScraperLoggingCallback(ABC):
     @abstractmethod
-    def on_log(self, text: str) -> None:
+    async def on_log(self, text: str) -> None:
+        pass    
+    
+class ScraperAugmentCallback(ABC):
+    @abstractmethod
+    async def augment_page(self, url: ScraperUrl, page: ScraperWebPage) -> None:
         pass
-
+    
+    
+class ScraperDomainConfigMode(Enum):
+    ALLOW_ALL = "allow_all"
+    DIREVE_FROM_URLS = "derive_from_seed_urls"
+        
+class ScraperAllowedDomains:
+    def __init__(self, *, domains: list[str] = []):
+        self.domains = domains
+    
+class ScraperDomainConfig:
+    def __init__(self, *,
+                forbidden_domains: list[str] = [],
+                allowance: ScraperDomainConfigMode|ScraperAllowedDomains = ScraperDomainConfigMode.DIREVE_FROM_URLS):        
+        self.forbidden_domains = forbidden_domains
+        self.allowance = allowance
+        
 class ScraperConfig:
-    def __init__(self, *, scraper_urls: list[ScraperUrl],
+    def __init__(self, *, seed_urls: list[ScraperUrl],
                 max_parallel_requests: int = 16,
                 use_headless_browser: bool = False,
                 timeout_seconds: int = 30,
-                only_sitemaps: bool = True,
+                follow_web_page_links: bool = False,
+                follow_sitemap_links: bool = False,
+                follow_feed_links: bool = False,
                 max_requested_urls: int = 64 * 1024,
                 max_back_to_back_errors: int = 128,
                 scraper_store_factory: ScraperStoreFactory,
-                allow_l2_domains: bool = True,
-                scraper_callback: ScraperCallback | None = None,
+                log_callback: ScraperLoggingCallback | None = None,
+                ai_callback: ScraperAugmentCallback | None = None,
                 max_depth: int = 16,
-                max_requests_per_hour: float = 60*60*10,
-                rerequest_after_hours: int = 24,
-                no_page_store: bool = False,
-                user_agent: str = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/115.0.0.0 Safari/537.36',):
-        self.scraper_urls = scraper_urls
+                crawl_delay_seconds: int = 10,
+                domain_config: ScraperDomainConfig = ScraperDomainConfig(
+                    allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
+                ),
+                user_agent: str = 'pyminiscraper',):
+        self.seed_urls = seed_urls
         self.max_parallel_requests = max_parallel_requests
-        self.domain_filter = DomainFilter(allow_l2_domains, [url.url for url in scraper_urls])
         self.use_headless_browser = use_headless_browser
         self.timeout_seconds = timeout_seconds
-        self.only_sitemaps = only_sitemaps
+        self.follow_web_page_links = follow_web_page_links
+        self.follow_feed_links = follow_feed_links
+        self.follow_sitemap_links = follow_sitemap_links
         self.max_requested_urls = max_requested_urls
-        self.scraper_store_factory = scraper_store_factory
-        self.scraper_callback = scraper_callback
+        self.store_factory = scraper_store_factory
+        self.log_callback = log_callback
+        self.ai_callback = ai_callback
+        self.ai_callback = log_callback
         self.max_depth = max_depth
-        self.max_requests_per_hour = max_requests_per_hour
+        self.crawl_delay_seconds = crawl_delay_seconds
         self.user_agent = user_agent
         self.max_back_to_back_errors = max_back_to_back_errors
-        if no_page_store:
-            self.rerequest_after_hours = 0
-        else:
-            self.rerequest_after_hours = rerequest_after_hours
+        self.domain_config = domain_config
 
-    def log(self, text: str) -> None:
+    async def log(self, text: str) -> None:
         logger.info(text)
-        if self.scraper_callback:
-            self.scraper_callback.on_log(text)
+        if self.log_callback:
+            await self.log_callback.on_log(text)

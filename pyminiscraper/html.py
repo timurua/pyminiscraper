@@ -11,11 +11,12 @@ EXCLUDED_EXTENSIONS = (
 )
 
 class HtmlContent:
-    def __init__(self, canonical_url: str, outgoing_urls: list[str], visible_text: str, sitemap_urls: list[str] | None, robots_content: list[str]| None)-> None:
+    def __init__(self, canonical_url: str, outgoing_urls: list[str], visible_text: str, sitemap_urls: list[str] | None,  rss_urls: list[str] | None, robots_content: list[str]| None)-> None:
         self.canonical_url = canonical_url
         self.outgoing_urls = outgoing_urls
         self.visible_text = visible_text
         self.sitemap_urls = sitemap_urls
+        self.rss_urls = rss_urls
         self.robots_content = robots_content
 
 class HtmlScraperProcessor:
@@ -48,14 +49,14 @@ class HtmlScraperProcessor:
         # Determine the canonical URL
         canonical_link = self.soup.find('link', rel='canonical')
         if canonical_link and canonical_link.get('href'):
-            canonical_url = make_absolute_url(self.url, canonical_link['href'])
+            canonical_url = make_absolute_url(self.url, canonical_link.get('href'))
         else:
             canonical_url = self.url  # Default to the original URL if no canonical link is found
             
         # Extract robots.txt URL from metadata
         robots_meta = self.soup.find('meta', attrs={'name': 'robots'})
         if robots_meta and robots_meta.get('content'):
-            robots_content = robots_meta['content']
+            robots_content = robots_meta.get('content')
             if robots_content:
                 robots_content = robots_content.split()
         else:
@@ -67,6 +68,13 @@ class HtmlScraperProcessor:
         for sitemap_link in sitemap_links:
             if sitemap_link and sitemap_link.get('href'):
                 sitemap_urls.append(make_absolute_url(self.url, sitemap_link['href']))
+
+        # Extract sitemap URL from metadata
+        rss_links = self.soup.find_all('link', rel='alternate', type="application/rss+xml")
+        rss_urls: List[str] = []
+        for rss_link in rss_links:
+            if rss_link and rss_link.get('href'):
+                rss_urls.append(make_absolute_url(self.url, rss_link['href']))                
 
         # Extract outgoing URLs
         outgoing_urls: Set[str] = set()
@@ -84,4 +92,4 @@ class HtmlScraperProcessor:
         # Extract text content with simple formatting
         text_content = self.soup.get_text(separator='\n', strip=True)
         
-        return HtmlContent(canonical_url, list(outgoing_urls), text_content, sitemap_urls, robots_content)
+        return HtmlContent(canonical_url, list(outgoing_urls), text_content, sitemap_urls, rss_urls,robots_content)

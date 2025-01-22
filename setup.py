@@ -3,7 +3,7 @@ import os
 
 setup(
     name="pyminiscraper",
-    version="0.1.1",
+    version="1.0.0",
     packages=find_packages(),
     install_requires=[
         'requests>=2.31.0',

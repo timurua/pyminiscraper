@@ -6,7 +6,7 @@ import logging
 
 import xml.etree.ElementTree as ET
 
-logger = logging.getLogger("robots")
+logger = logging.getLogger("sitemap")
 
 class SitemapError(Exception):
     pass

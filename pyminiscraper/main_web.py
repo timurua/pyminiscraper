@@ -5,6 +5,7 @@ import logging
 import sys
 from .scraper import Scraper, ScraperConfig, ScraperUrl
 from .store_file import FileStoreFactory
+from .config import ScraperDomainConfig, ScraperDomainConfigMode
 
 @click.command()
 @click.argument('storage_dir', type=click.Path(file_okay=False, dir_okay=True, path_type=pathlib.Path))
@@ -23,15 +24,18 @@ async def main(storage_dir: pathlib.Path):
 
     scraper = Scraper(
         ScraperConfig(
-            scraper_urls=[
+            seed_urls=[
                 ScraperUrl(
                     "https://www.anthropic.com/news", max_depth=2)
             ],
-            max_parallel_requests=100,
+            max_parallel_requests=5,
+            domain_config=ScraperDomainConfig(
+                allowance=ScraperDomainConfigMode.ALLOW_ALL
+            ),
             use_headless_browser=True,
             timeout_seconds=30,
-            max_requests_per_hour=6*60,
-            only_sitemaps=False,
+            crawl_delay_seconds=5,
+            follow_web_page_links=False,
             scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
         ),
     )

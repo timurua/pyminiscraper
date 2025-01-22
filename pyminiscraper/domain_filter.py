@@ -1,24 +1,37 @@
 from urllib.parse import urlparse
-from .robots import Robot, AccessRule
+from .config import ScraperDomainConfig, ScraperDomainConfigMode, ScraperAllowedDomains
 
 class DomainFilter:
-    def __init__(self, allow_l2_domains: bool, urls: list[str])-> None:
-        self.domains: set[str] = set()
-        self.allow_l2_domains = allow_l2_domains
-        if allow_l2_domains:
+    def __init__(self, domain_config: ScraperDomainConfig, urls: list[str] = [])-> None:
+        self.forbidden_domains = domain_config.forbidden_domains
+        self.allowed_domains: set[str]|None = set()        
+        if domain_config.allowance == ScraperDomainConfigMode.DIREVE_FROM_URLS:
             for url in urls:
-                domain = urlparse(url).netloc
-                l2domain = '.'.join(domain.split('.')[-2:])
-                self.domains.add(l2domain)
+                self.allowed_domains.add(urlparse(url).netloc)
+        elif domain_config.allowance == ScraperDomainConfigMode.ALLOW_ALL:
+            self.allowed_domains = None
+        elif isinstance(domain_config.allowance, ScraperAllowedDomains):
+            for domain in domain_config.allowance.domains:
+                self.allowed_domains.add(domain)
         else:
-            for url in urls:
-                self.domains.add(urlparse(url).netloc)
-
+            raise ValueError("Unsupported domain config mode")
+                
+        if domain_config.forbidden_domains:
+            self.forbidden_domains = domain_config.forbidden_domains
+                
     def is_allowed(self, url: str)-> bool:
         domain = urlparse(url).netloc
-        if self.allow_l2_domains:
-            l2domain = '.'.join(domain.split('.')[-2:])
-            return l2domain in self.domains
-        else:
-            return domain in self.domains
+        if self.forbidden_domains:
+            for forbidden_domain in self.forbidden_domains:
+                if domain.endswith(forbidden_domain):
+                    return False
+                
+        if self.allowed_domains is None or len(self.allowed_domains) == 0:
+            return True
+        
+        for allowed_domain in self.allowed_domains:
+            if domain.endswith(allowed_domain):
+                return True
+        
+        return False
         
