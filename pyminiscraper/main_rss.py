@@ -33,7 +33,7 @@ async def main(storage_dir: pathlib.Path):
                 allowance=ScraperDomainConfigMode.ALLOW_ALL
             ),
             use_headless_browser=True,
-            timeout_seconds=30,
+            request_timeout_seconds=30,
             crawl_delay_seconds=1,
             follow_web_page_links=False,
             scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),

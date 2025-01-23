@@ -36,7 +36,7 @@ class ScraperConfig:
     def __init__(self, *, seed_urls: list[ScraperUrl],
                 max_parallel_requests: int = 16,
                 use_headless_browser: bool = False,
-                timeout_seconds: int = 30,
+                request_timeout_seconds: int = 30,
                 follow_web_page_links: bool = False,
                 follow_sitemap_links: bool = False,
                 follow_feed_links: bool = False,
@@ -54,7 +54,7 @@ class ScraperConfig:
         self.seed_urls = seed_urls
         self.max_parallel_requests = max_parallel_requests
         self.use_headless_browser = use_headless_browser
-        self.timeout_seconds = timeout_seconds
+        self.request_timeout_seconds = request_timeout_seconds
         self.follow_web_page_links = follow_web_page_links
         self.follow_feed_links = follow_feed_links
         self.follow_sitemap_links = follow_sitemap_links

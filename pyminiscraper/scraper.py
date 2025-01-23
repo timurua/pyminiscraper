@@ -39,7 +39,7 @@ class Scraper:
             headers={
                 'User-Agent': config.user_agent
             },
-            timeout = aiohttp.ClientTimeout(total=config.timeout_seconds))
+            timeout = aiohttp.ClientTimeout(total=config.request_timeout_seconds))
         
         self.domain_metadata: Dict[str, asyncio.Task[DomainMetadata]] = {}
         self.queued_urls: set[str] = set()
