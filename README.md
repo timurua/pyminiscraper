@@ -64,9 +64,9 @@
 ┌───────────────────┐     |
 │      Discover     │     |   
 │      Outgoing     |     |
-|     Web Pages     │─────┘
-|  RSS/Atom feeds   |
-│                   │
+|     Web Page      │─────┘
+|  RSS/Atom feed    |
+│      links        │
 └───────────────────┘
 ```
 
