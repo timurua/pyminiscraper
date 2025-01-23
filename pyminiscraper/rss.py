@@ -22,8 +22,7 @@ class RssItem:
     guid: Optional[str]
     author: Optional[str]
     categories: List[str]
-
-
+    
 @dataclass
 class RssFeed:
     title: Optional[str]

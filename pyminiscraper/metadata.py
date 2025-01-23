@@ -1,10 +1,8 @@
-import extruct
-import requests
+import extruct # type: ignore[import-untyped]
 from w3lib.html import get_base_url
-from typing import Dict, Optional
+from typing import Optional, cast
 from datetime import datetime
-from bs4 import BeautifulSoup
-from .model import ScraperWebPage
+from bs4 import BeautifulSoup, Tag
 from dateutil import parser
 from .url import make_absolute_url
 
@@ -16,10 +14,10 @@ class PageMetadata:
         self.published_at = published_at
 
 class PageMetadataExtractor:
-    def __init__(self, url: str, content: str, soup: BeautifulSoup) -> None:
+    def __init__(self, url: str, content: str, soup: BeautifulSoup| None = None) -> None:
         self.url = url
         self.content = content
-        self.soup = soup
+        self.soup = soup if soup else BeautifulSoup(content, 'html.parser')
         self.base_url = get_base_url(self.content, self.url)
         self.metadata = self._extract_all_metadata()
 
@@ -31,7 +29,7 @@ class PageMetadataExtractor:
             syntaxes=['opengraph', 'json-ld', 'microdata']
         )
 
-    def get_title(self) -> str:
+    def get_title(self) -> Optional[str]:
         """Extract title with fallbacks"""
         # Try OpenGraph
         for item in self.metadata.get('opengraph', []):
@@ -47,12 +45,12 @@ class PageMetadataExtractor:
 
         # Fallback to HTML title tag
         title_tag = self.soup.find('title')
-        if title_tag:
-            return title_tag.string.strip()
+        if title_tag and isinstance(title_tag, Tag) and title_tag.string:
+            return str(title_tag.string).strip()
 
-        return ''
+        return None
 
-    def get_description(self) -> str:
+    def get_description(self) -> Optional[str]:
         """Extract description with fallbacks"""
         # Try OpenGraph
         for item in self.metadata.get('opengraph', []):
@@ -66,12 +64,13 @@ class PageMetadataExtractor:
 
         # Fallback to meta description
         meta_desc = self.soup.find('meta', attrs={'name': 'description'})
-        if meta_desc:
-            return meta_desc.get('content', '').strip()
+        if meta_desc and isinstance(meta_desc, Tag):
+            content = meta_desc.get('content', '')
+            return str(content).strip()
 
-        return ''
+        return None
 
-    def get_image(self) -> str:
+    def get_image_url(self) -> Optional[str]:
         """Extract main image URL with fallbacks"""
         # Try OpenGraph
         for item in self.metadata.get('opengraph', []):
@@ -89,12 +88,13 @@ class PageMetadataExtractor:
                 if isinstance(image, dict) and 'url' in image:
                     return make_absolute_url(self.base_url, image['url'])
 
-        # Fallback to first significant image
         first_img = self.soup.find('img', attrs={'src': True})
-        if first_img:
-            return make_absolute_url(self.base_url, first_img['src'])
+        if first_img and isinstance(first_img, Tag):
+            src = first_img.get('src')
+            if isinstance(src, str):
+                return make_absolute_url(self.base_url, src)            
 
-        return ''
+        return None
 
     def get_published_date_string(self) -> Optional[str]:
         """Extract publication date with fallbacks"""
@@ -108,12 +108,13 @@ class PageMetadataExtractor:
         for item in self.metadata.get('opengraph', []):
             if 'article:published_time' in item:
                 return item['article:published_time']
-
+            
         # Try meta tags
         meta_date = self.soup.find('meta', attrs={'property': 'article:published_time'})
-        if meta_date:
-            return meta_date.get('content')
-
+        if meta_date and isinstance(meta_date, Tag):
+            content = meta_date.get('content')
+            return str(content).strip()
+        
         return None
     
     def get_published_date(self) -> Optional[datetime]:
@@ -128,6 +129,6 @@ class PageMetadataExtractor:
         return PageMetadata(
             title=self.get_title(),
             description=self.get_description(),
-            image=self.get_image(),
+            image=self.get_image_url(),
             published_at=self.get_published_date()
         )

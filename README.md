@@ -9,6 +9,7 @@
 | Feature | Implemented |
 |---------|------------|
 | Basic Web Page scraping | ✅ |
+| Extremely scalable async scraping | ✅ |
 | Web Page spidering | ✅ |
 | Parallel requests | ✅ |
 | Headless browser support | ✅ |
@@ -27,33 +28,139 @@
 | Request timeout | ✅ |
 | Page caching | ✅ |
 
+## How does it work
 
-## Simplest Use Case
+```
+┌───────────────────┐
+│                   │
+│  Initializing     │
+│                   │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│     Download      │
+│     Robots.txt    │
+│                   │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│     Queue for     │
+|    Configurable   |◀────┐
+|      Parallel     |     |
+|     Processing    |     |
+└─────────┬─────────┘     |
+          │               |
+          ▼               |
+┌───────────────────┐     |    ┌───────────────────┐
+│        Scrape     │     |    │                   │
+|      Web Pages,   |     |    │    Loading        │
+│     RSS & Atom    │──── | ───│    Saving         │
+│                   │     |    │    Web Pages      │    
+└─────────┬─────────┘     |    └───────────────────┘ 
+          │               |
+          ▼               |
+┌───────────────────┐     |
+│      Discover     │     |   
+│      Outgoing     |     |
+|     Web Pages     │─────┘
+|  RSS/Atom feeds   |
+│                   │
+└───────────────────┘
+```
 
-Here is a basic example of how to use `pyminiscraper` to scrape data from a web page:
+## Use Cases
+
+### Downloading only sitemap referenced web pages
+
+Here is a basic example of how to use `pyminiscraper` to scrape 
 
 ```python
-from pyminiscraper.scraper import Scraper
-from pyminiscraper.config import ScraperConfig
-
-storage_dir.mkdir(parents=True, exist_ok=True)
-click.echo(f"Storage directory set to: {storage_dir}")
 
 scraper = Scraper(
     ScraperConfig(
-        scraper_urls=[
+        seed_urls=[
             ScraperUrl(
-                "https://www.anthropic.com/news", max_depth=2)
+                "https://www.anthropic.com/", max_depth=2, ScraperUrlType.HTML)
         ],
-        max_parallel_requests=16,
-        use_headless_browser=False,
-        timeout_seconds=30,
-        max_requests_per_hour=6*60,
-        scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
+        follow_sitemap_links=True,
+        follow_web_page_links=False,
+        follow_feed_links=False,
+        scraper_store_factory=FileStoreFactory(storage_dir),
     ),
 )
 await scraper.run()
 
+```
+
+### Scraping pages referenced in Atom/RSS Feeds
+
+Here is a basic example of how to use `pyminiscraper` to scrape 
+
+```python
+scraper = Scraper(
+    ScraperConfig(
+        seed_urls=[
+            ScraperUrl(
+                "https://feeds.feedburner.com/PythonInsider", type= ScraperUrlType.FEED)
+        ],
+        follow_sitemap_links=False,
+        follow_web_page_links=False,
+        follow_feed_links=True,
+        scraper_store_factory=FileStoreFactory(storage_dir),
+    ),
+)
+await scraper.run()
+```
+
+### Full web site capture/spidering using all possible sources of references Sitemaps/Atom/RSS/links on Web Pages
+
+Here is a basic example of how to use `pyminiscraper` to scrape 
+
+```python
+scraper = Scraper(
+    ScraperConfig(
+        seed_urls=[
+            ScraperUrl(
+                "https://www.anthropic.com/", type= ScraperUrlType.FEED)
+        ],
+        follow_sitemap_links=True,
+        follow_web_page_links=True,
+        follow_feed_links=True,
+        scraper_store_factory=FileStoreFactory(storage_dir),
+    ),
+)
+await scraper.run()
+```
+
+### High volume scraping
+
+Here is a basic example of how to use `pyminiscraper` to scrape 
+
+```python
+async def scrape_site(url: str)
+    scraper = Scraper(
+        ScraperConfig(
+            seed_urls=[
+                ScraperUrl(
+                    url, type= ScraperUrlType.FEED)
+            ],
+            follow_sitemap_links=True,
+            follow_web_page_links=True,
+            follow_feed_links=True,
+            scraper_store_factory=FileStoreFactory(storage_dir),
+        ),
+    )
+    await scraper.run()
+
+sites = [
+            "https://example1.com", 
+            "https://example2.com", 
+            "https://example3.com"
+        ]
+tasks = [scrape_site(url) for url in sites]
+await asyncio.gather(*tasks)
 ```
 
 ## Advanced Configuration Options

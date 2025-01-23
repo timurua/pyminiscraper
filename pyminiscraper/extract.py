@@ -1,4 +1,4 @@
-from .html import HtmlContent, HtmlScraperProcessor
+from .html import HtmlScraperProcessor
 from .metadata import PageMetadataExtractor
 from bs4 import BeautifulSoup
 from .model import ScraperWebPage

@@ -86,5 +86,5 @@ if __name__ == "__main__":
     result = analyze_url_groups(test_urls, min_pages_per_sub_path=3)
     for domain in result.values():
         print(f"\nDomain: {domain}")
-        for subpath, count in domain.frequent_subpaths:
+        for subpath, count in domain.frequent_subpaths.items():
             print(f"  {subpath}: {count} pages")

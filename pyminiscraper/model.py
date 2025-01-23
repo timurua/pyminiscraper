@@ -12,16 +12,16 @@ class ScraperUrlType(Enum):
     
 
 class ScrapeUrlMetadata:
-    def __init__(self, title: str | None, description: str | None, published_at: datetime | None):
+    def __init__(self, title: str | None, description: str | None, published_at: datetime | None, image_url: str | None):   
         self.title = title
         self.description = description
         self.published_at = published_at
+        self.image_url = image_url
 
 class ScraperUrl:
-    def __init__(self, url: str, *, no_cache: bool = False, max_depth: int = 16, type: ScraperUrlType = ScraperUrlType.HTML, high_priority: bool = False, metadata: ScrapeUrlMetadata | None = None):
+    def __init__(self, url: str, *, max_depth: int = 16, type: ScraperUrlType = ScraperUrlType.HTML, high_priority: bool = False, metadata: ScrapeUrlMetadata | None = None):
         self.url = url
         self.normalized_url = normalize_url(url)
-        self.no_cache = no_cache
         self.max_depth = max_depth
         self.type = type
         self.high_priority = high_priority
@@ -58,7 +58,7 @@ class ScraperWebPage:
     outgoing_urls: list[str] | None = None
     visible_text: str | None = None
     sitemap_urls: list[str] | None = None
-    rss_urls: list[str] | None = None
+    feed_urls: list[str] | None = None
     robots_content: list[str] | None = None
     text_chunks: list[str] | None = None
 
@@ -101,7 +101,7 @@ class ScraperWebPage:
         self.outgoing_urls = outgoing_urls
         self.visible_text = visible_text
         self.sitemap_urls = sitemap_urls
-        self.rss_urls = rss_urls
+        self.feed_urls = rss_urls
         self.robots_content = robots_content
         self.text_chunks = text_chunks
         self.requested_at = requested_at

@@ -26,7 +26,7 @@ class AccessRule(Enum):
     DEFAULT = 3
 
 class Robot:
-    def __init__(self):
+    def __init__(self)-> None:
         self.entries: List[Entry] = []
         self.sitemap_urls: set[str] = set()
         self.default_entry: Optional[Entry] = None
@@ -61,14 +61,14 @@ class Robot:
         state = ParseState.NONE
         entry = Entry()
 
-        for line in lines:
-            i = line.find('#')
+        for line_text in lines:
+            i = line_text.find('#')
             if i >= 0:
-                line = line[:i]
-            line = line.strip()
-            if not line:
+                line_text = line_text[:i]
+            line_text = line_text.strip()
+            if not line_text:
                 continue
-            line = line.split(':', 1)
+            line = line_text.split(':', 1)
             if len(line) != 2:
                 logger.warning(f"Skipping invalid line in robots.txt: {line}")
                 continue

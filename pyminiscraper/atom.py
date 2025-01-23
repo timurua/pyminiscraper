@@ -27,9 +27,9 @@ class AtomEntry:
     content: Optional[str] = None
     summary: Optional[str] = None
     published: Optional[datetime] = None
-    authors: list[AtomAuthor]|None = None
-    links: list[AtomLink]|None = None
-    categories: list[str]|None = None
+    authors: Optional[list[AtomAuthor]] = None
+    links: Optional[list[AtomLink]] = None
+    categories: Optional[list[str]] = None
 
     def __post_init__(self):
         if self.authors is None:
@@ -125,11 +125,11 @@ class AtomParser:
             
             # Parse categories
             categories = [
+                term for term in [
                 cat.get('term') 
-                for cat in entry_elem.findall('atom:category', self.ns)
-            ]
-                        
-            categories = [cat for cat in categories if cat is not None]
+                for cat in entry_elem.findall('atom:category', self.ns)] if term is not None
+            ]                        
+
             
             entries.append(
                 AtomEntry(

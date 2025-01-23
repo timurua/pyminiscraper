@@ -38,15 +38,15 @@ class ScraperConfig:
                 use_headless_browser: bool = False,
                 request_timeout_seconds: int = 30,
                 follow_web_page_links: bool = False,
-                follow_sitemap_links: bool = False,
-                follow_feed_links: bool = False,
+                follow_sitemap_links: bool = True,
+                follow_feed_links: bool = True,
                 max_requested_urls: int = 64 * 1024,
                 max_back_to_back_errors: int = 128,
                 scraper_store_factory: ScraperStoreFactory,
                 log_callback: ScraperLoggingCallback | None = None,
                 ai_callback: ScraperAugmentCallback | None = None,
                 max_depth: int = 16,
-                crawl_delay_seconds: int = 10,
+                crawl_delay_seconds: int = 1,
                 domain_config: ScraperDomainConfig = ScraperDomainConfig(
                     allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
                 ),
@@ -62,7 +62,6 @@ class ScraperConfig:
         self.store_factory = scraper_store_factory
         self.log_callback = log_callback
         self.ai_callback = ai_callback
-        self.ai_callback = log_callback
         self.max_depth = max_depth
         self.crawl_delay_seconds = crawl_delay_seconds
         self.user_agent = user_agent

@@ -10,7 +10,7 @@
             "request": "launch",
             "module": "pyminiscraper.main_web",
             "args": [
-                "/home/timur/page_store"
+                "/home/timur/page_store_web_page"
             ]
 
         },
@@ -20,7 +20,7 @@
             "request": "launch",
             "module": "pyminiscraper.main_rss",
             "args": [
-                "/home/timur/page_store"
+                "/home/timur/page_store_rss"
             ]
 
         },        

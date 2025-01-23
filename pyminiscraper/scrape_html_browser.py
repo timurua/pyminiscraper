@@ -21,7 +21,7 @@ class BrowserHtmlScraperError(Exception):
 
 
 class BrowserHtmlScraperFactory:
-    def __init__(self):
+    def __init__(self)-> None:
         self.drivers: list[webdriver.Chrome] = []
 
     async def close(self) -> None:

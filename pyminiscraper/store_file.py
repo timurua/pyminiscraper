@@ -3,7 +3,6 @@ from typing import Optional
 from .model import ScraperWebPage
 import os
 import json
-import datetime
 from dateutil import parser
 from .url import normalized_url_hash
 

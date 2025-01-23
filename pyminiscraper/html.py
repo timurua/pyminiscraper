@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from .url import make_absolute_url
-from typing import Optional, Dict, Any, List, Set
+from typing import List, Set
+from bs4.element import Tag
 
 EXCLUDED_EXTENSIONS = (
     '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
@@ -45,21 +46,19 @@ class HtmlScraperProcessor:
         return False
 
     def extract(self) -> HtmlContent:
-        
         # Determine the canonical URL
         canonical_link = self.soup.find('link', rel='canonical')
-        if canonical_link and canonical_link.get('href'):
+        canonical_url = self.url
+        if isinstance(canonical_link, Tag) and canonical_link.get('href'):
             canonical_url = make_absolute_url(self.url, canonical_link.get('href'))
-        else:
-            canonical_url = self.url  # Default to the original URL if no canonical link is found
             
         # Extract robots.txt URL from metadata
         robots_meta = self.soup.find('meta', attrs={'name': 'robots'})
-        if robots_meta and robots_meta.get('content'):
-            robots_content = robots_meta.get('content')
-            if robots_content:
-                robots_content = robots_content.split()
-        else:
+        robots_content = None
+        if isinstance(robots_meta, Tag):
+            content = robots_meta.get('content')
+            if isinstance(content, str):
+                robots_content = content.split()
             robots_content = None
             
         # Extract sitemap URL from metadata

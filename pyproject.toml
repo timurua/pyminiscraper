@@ -1,0 +1,37 @@
+[build-system]
+requires = ["wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyminiscraper"
+version = "1.0.2"
+description = "A mini web scraping utility package"
+authors = [
+    {name = "Timur Valiulin", email = "timurua@gmail.com"},
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "beautifulsoup4>=4.12.2",
+    "requests>=2.31.0",
+    "lxml>=4.9.3",
+    "selenium>=4.11.2",
+    "python-dotenv>=1.0.0",
+    "urllib3>=2.0.4",
+    "click>=8.1.8",
+    "aiohttp>=3.11.11",
+    "extruct>=0.18.0",
+    "python-dateutil>=2.9.0",
+    "aiolimiter>=1.2.1",
+    "types-beautifulsoup4>=4.12.2",
+    "types-python-dateutil>=2.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/timurua/pyminiscraper"

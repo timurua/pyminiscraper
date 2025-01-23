@@ -3,14 +3,14 @@ from typing import Optional
 from .model import ScraperWebPage
 
 class MemoryStoreFactory(ScraperStoreFactory):
-    def __init__(self):
+    def __init__(self) -> None:
         self.store: dict[str, ScraperWebPage] = {}
     
     def new_store(self) -> ScraperStore:
         return MemoryStore(self.store)
 
 class MemoryStore(ScraperStore):
-    def __init__(self, store: dict[str, ScraperWebPage] = None):
+    def __init__(self, store: dict[str, ScraperWebPage]) -> None:
         self.store = store
         
     async def store_page(self, response: ScraperWebPage) -> None:
