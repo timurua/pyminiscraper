@@ -87,11 +87,12 @@ class Scraper:
 
     async def _extract_metadata_and_save(self, scraper_store: ScraperStore,  url: ScraperUrl, page: ScraperWebPage) -> ScraperWebPage:
         page = extract_metadata(page)        
+        self._default_to_external_metadata(url, page)
         if scraper_store:
             await scraper_store.store_page(page)
         return page
     
-    def default_to_external_metadata(self, url: ScraperUrl, page: ScraperWebPage) -> None:
+    def _default_to_external_metadata(self, url: ScraperUrl, page: ScraperWebPage) -> None:
         if url.metadata:
             page.metadata_title = page.metadata_title or url.metadata.title
             page.metadata_description = page.metadata_description or url.metadata.description
@@ -152,10 +153,20 @@ class Scraper:
     
     async def _enqueue_sitemap_urls(self, sitemap: Sitemap) -> None:
         for page_url in sitemap.page_urls:
-            await self._queue_scraper_url(ScraperUrl(page_url.loc, max_depth=self.config.max_depth, type=ScraperUrlType.HTML))
+            await self._queue_scraper_url(
+                ScraperUrl(page_url.loc, 
+                           max_depth=self.config.max_depth, 
+                           type=ScraperUrlType.HTML, 
+                           metadata=ScrapeUrlMetadata(
+                                 None, None, page_url.lastmod, None
+                           )
+                )
+            )
         
         for sitemap_url in sitemap.sitemap_urls:
-            await self._queue_scraper_url(ScraperUrl(sitemap_url.loc, max_depth=self.config.max_depth, type=ScraperUrlType.SITEMAP))        
+            await self._queue_scraper_url(
+                ScraperUrl(sitemap_url.loc, max_depth=self.config.max_depth, type=ScraperUrlType.SITEMAP)
+            )        
             
     async def _enqueue_feed_urls(self, rss: Feed) -> None:
         for item in rss.items:
