@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyminiscraper"
-version = "1.0.6"
+version = "1.0.7"
 description = "A mini web scraping utility package"
 authors = [
     {name = "Timur Valiulin", email = "timurua@gmail.com"},

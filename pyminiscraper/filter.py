@@ -1,5 +1,7 @@
 from urllib.parse import urlparse
 from .config import ScraperDomainConfig, ScraperDomainConfigMode, ScraperAllowedDomains
+import re
+from .robots import robots_txt_pattern_compile
 
 class DomainFilter:
     def __init__(self, domain_config: ScraperDomainConfig, urls: list[str] = [])-> None:
@@ -33,5 +35,24 @@ class DomainFilter:
             if domain.endswith(allowed_domain):
                 return True
         
+        return False
+    
+class PathFilter:
+    def __init__(self, path_filters: list[str]):
+        self.path_filter_patterns: list[re.Pattern] = []
+        for path_filter in path_filters:
+            self.path_filter_patterns.append(robots_txt_pattern_compile(path_filter))
+            
+    def is_allowed(self, url: str)-> bool:
+        if not self.path_filter_patterns:
+            return True
+        
+        path = urlparse(url).path
+        if not path.startswith('/'):
+            path = "/" + path
+                    
+        for path_filter_pattern in self.path_filter_patterns:
+            if path_filter_pattern.fullmatch(path):
+                return True
         return False
         

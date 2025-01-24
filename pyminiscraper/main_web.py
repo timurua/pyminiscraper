@@ -32,6 +32,9 @@ async def main(storage_dir: pathlib.Path):
             domain_config=ScraperDomainConfig(
                 allowance=ScraperDomainConfigMode.ALLOW_ALL
             ),
+            path_filters=[
+                "/research/"
+            ],
             use_headless_browser=True,
             request_timeout_seconds=30,
             crawl_delay_seconds=5,

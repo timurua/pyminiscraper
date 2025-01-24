@@ -19,7 +19,7 @@ from datetime import datetime
 from .ratelimiter import CrawlRateLimiter
 import aiohttp
 from .feed import FeedParser, Feed
-from .domain_filter import DomainFilter
+from .filter import DomainFilter, PathFilter
 
 
 logger = logging.getLogger("scraper")
@@ -56,10 +56,12 @@ class Scraper:
         self.sitemaps: dict[str, Sitemap] = {}
         self.feeds: dict[str, Feed] = {}
         self.domain_filter = DomainFilter(config.domain_config, [url.url for url in config.seed_urls])
+        self.path_filter = PathFilter(config.path_filters)
+        
 
     async def run(self) -> ScraperStats:
         for scraper_url in self.config.seed_urls:
-            await self._queue_scraper_url(scraper_url)
+            await self._queue_scraper_url(scraper_url, skip_path_filter=True)
 
         tasks = []
         for i in range(self.config.max_parallel_requests):
@@ -266,22 +268,26 @@ class Scraper:
         for url in urls:
             await self._queue_scraper_url(ScraperUrl(url, max_depth=self.config.max_depth, type=type))
 
-    async def _queue_scraper_url(self, outgoing_scraper_url: ScraperUrl) -> None:
-        if outgoing_scraper_url.normalized_url in self.queued_urls:
+    async def _queue_scraper_url(self, scraper_url: ScraperUrl, skip_path_filter: bool = False) -> None:
+        if scraper_url.normalized_url in self.queued_urls:
             return
-        if not self._is_domain_allowed(outgoing_scraper_url.normalized_url):
-            logger.info(f"skipping url before queueing - {self._looper_context('')} - {self._url_context(outgoing_scraper_url)}")
+        if not self._is_domain_allowed(scraper_url.normalized_url):
+            logger.info(f"skipping url before queueing - domain not allowed - {self._looper_context('')} - {self._url_context(scraper_url)}")
+            return
+        
+        if scraper_url.type == ScraperUrlType.HTML and not skip_path_filter and not self.path_filter.is_allowed(scraper_url.normalized_url):
+            logger.info(f"skipping url before queueing - path not allowed - {self._looper_context('')} - {self._url_context(scraper_url)}")
             return
                 
-        logger.info(f"queueing - {self._looper_context('')} - url: {self._url_context(outgoing_scraper_url)}")
-        self.queued_urls.add(outgoing_scraper_url.normalized_url)
-        if outgoing_scraper_url.type == ScraperUrlType.FEED \
-            or outgoing_scraper_url.type == ScraperUrlType.SITEMAP\
-            or outgoing_scraper_url.type == ScraperUrlType.TERMINATE_LOOP \
-            or outgoing_scraper_url.high_priority:
-            await self.url_queue.appendright(outgoing_scraper_url) 
+        logger.info(f"queueing - {self._looper_context('')} - url: {self._url_context(scraper_url)}")
+        self.queued_urls.add(scraper_url.normalized_url)
+        if scraper_url.type == ScraperUrlType.FEED \
+            or scraper_url.type == ScraperUrlType.SITEMAP\
+            or scraper_url.type == ScraperUrlType.TERMINATE_LOOP \
+            or scraper_url.high_priority:
+            await self.url_queue.appendright(scraper_url) 
         else:
-            await self.url_queue.appendleft(outgoing_scraper_url)
+            await self.url_queue.appendleft(scraper_url)
     
 
     def _is_domain_allowed(self, normalized_url: str) -> bool:
