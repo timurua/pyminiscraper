@@ -29,7 +29,7 @@ dependencies = [
     "extruct>=0.18.0",
     "python-dateutil>=2.9.0",
     "aiolimiter>=1.2.1",
-    "types-beautifulsoup4>=4.12.2",
+    "types-beautifulsoup4>=4.12.0",
     "types-python-dateutil>=2.9.0",
 ]
 
