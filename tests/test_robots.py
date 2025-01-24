@@ -2,8 +2,9 @@ import pytest
 from pyminiscraper.robots import Robot, RuleLine, Entry, AccessRule
 import aiohttp
 import asyncio
-from pyminiscraper.robots import Robot, AccessRule, RobotsError
+from pyminiscraper.robots import Robot, AccessRule, RobotsError, robots_txt_pattern_compile, robots_txt_path_match
 from aioresponses import aioresponses
+import re
 
 def test_robot_file_parser_initialization():
     parser = Robot()
@@ -187,3 +188,67 @@ async def test_download_and_parse_unicode_decode_error(caplog):
         async with aiohttp.ClientSession() as session:
             with pytest.raises(RobotsError):
                 await Robot.download_and_parse("http://example.com/robots.txt", session)
+                
+def test_robots_txt_pattern_compile():
+    # Test basic pattern compilation
+    assert str(robots_txt_pattern_compile("/test")) == "re.compile('/test.*')"
+    assert str(robots_txt_pattern_compile("/test*")) == "re.compile('/test.*')"
+    assert str(robots_txt_pattern_compile("/test$")) == "re.compile('/test$')"
+    
+    # Test dot escaping
+    assert str(robots_txt_pattern_compile("/test.html")) == "re.compile('/test\\\\.html.*')"
+    
+    # Test without leading slash
+    assert str(robots_txt_pattern_compile("test")) == "re.compile('/test.*')"
+
+def test_robots_txt_path_match_exact():
+    assert robots_txt_path_match("/test", "/test") is True
+    assert robots_txt_path_match("/test", "/test2") is True
+    assert robots_txt_path_match("/test$", "/test") is True
+    assert robots_txt_path_match("/test$", "/test2") is False
+
+def test_robots_txt_path_match_wildcards():
+    assert robots_txt_path_match("/test*", "/test123") is True
+    assert robots_txt_path_match("/test*page", "/test_mypage") is True
+    assert robots_txt_path_match("/*/page", "/test/page") is True
+    assert robots_txt_path_match("/*.html", "/file.html") is True
+    assert robots_txt_path_match("/*.html$", "/file.html") is True
+    assert robots_txt_path_match("/*.html$", "/file.htmlx") is False
+
+def test_robots_txt_path_match_leading_slash():
+    assert robots_txt_path_match("test", "test") is True
+    
+def test_robots_txt_pattern_compile_advanced():
+    # Test advanced pattern compilation
+    assert str(robots_txt_pattern_compile("/path/*/test")) == "re.compile('/path/.*/test.*')"
+    assert str(robots_txt_pattern_compile("/file.txt$")) == "re.compile('/file\\\\.txt$')"
+    assert str(robots_txt_pattern_compile("/*.php$")) == "re.compile('/.*\\\\.php$')"
+    assert str(robots_txt_pattern_compile("/test/*.jpg")) == "re.compile('/test/.*\\\\.jpg.*')"
+
+def test_robots_txt_path_match_advanced():
+    # True assertions
+    assert robots_txt_path_match("/path/*", "/path/to/file") is True
+    assert robots_txt_path_match("/*.pdf", "/doc.pdf") is True 
+    assert robots_txt_path_match("/assets/*", "/assets/images/logo.png") is True
+    assert robots_txt_path_match("/*.min.js", "/jquery.min.js") is True
+    assert robots_txt_path_match("/*/uploads/*", "/site/uploads/file.txt") is True
+    
+    # False assertions
+    assert robots_txt_path_match("/private/*$", "/private/files/test") is True
+    assert robots_txt_path_match("/*.jpg$", "/image.jpg.png") is False
+    assert robots_txt_path_match("/admin/", "/administrator") is False
+    assert robots_txt_path_match("/test/*.php", "/test2/file.php") is False
+    assert robots_txt_path_match("/exact/path$", "/exact/path/subdir") is False
+
+def test_robots_txt_path_match_edge_cases():
+    # Empty and special paths
+    assert robots_txt_path_match("/", "/") is True
+    assert robots_txt_path_match("/*", "/any/path/here") is True
+    assert robots_txt_path_match("/$", "/") is True
+    assert robots_txt_path_match("/$", "/path") is False
+    
+    # Paths with dots and special characters
+    assert robots_txt_path_match("/page.*/", "/page.php/") is True
+    assert robots_txt_path_match("/test.*$", "/test") is False
+    assert robots_txt_path_match("/*.download", "/file.download.txt") is True
+    assert robots_txt_path_match("/download/*.html$", "/download/page.html") is True

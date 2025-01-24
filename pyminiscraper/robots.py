@@ -7,6 +7,7 @@ import aiohttp
 import logging
 import asyncio
 from .url import normalize_url
+import re
 
 logger = logging.getLogger("robots")
 
@@ -157,11 +158,14 @@ class RuleLine:
             allowance = True
         path = urllib.parse.urlunparse(urllib.parse.urlparse(path))
         self.path: str = urllib.parse.quote(path)
+        self.path_pattern = robots_txt_pattern_compile(self.path)
         self.allowance: bool = allowance
 
     def applies_to(self, filename: str) -> bool:
-        return self.path == "*" or filename.startswith(self.path)
-
+        if not filename.startswith('/'):
+            filename = '/' + filename
+        return bool(self.path_pattern.fullmatch(filename))
+        
     def __str__(self) -> str:
         return ("Allow" if self.allowance else "Disallow") + ": " + self.path
 
@@ -195,8 +199,38 @@ class Entry:
                 return True
         return False
 
-    def allowance(self, filename: str) -> bool:
+    def allowance(self, filename: str) -> bool:        
         for line in self.rulelines:
             if line.applies_to(filename):
                 return line.allowance
         return True
+    
+special_chars = set(['\\', '.', '+', '?', '|', '(', ')', '[', ']', '{', '}'])
+    
+def robots_txt_pattern_compile(path: str) -> re.Pattern:
+    pattern = path
+    if not pattern.startswith('/'):
+        pattern = '/' + pattern       
+        
+    # pattern = re.escape(pattern).replace(r'\\*', '*').replace(r'\\$', '$')
+    
+    escaped_pattern = ''
+    for pchar in pattern:
+        if pchar in special_chars:
+            escaped_pattern += "\\" + pchar
+        else:
+            escaped_pattern += pchar            
+    pattern = escaped_pattern
+    
+    pattern = pattern.replace('*', '.*')
+    if not pattern.endswith('$') and not pattern.endswith('.*'):
+        pattern = pattern + '.*'   
+        
+    return re.compile(pattern)
+    
+def robots_txt_path_match(robots_path: str, url_path: str) -> bool:
+    if not url_path.startswith('/'):
+        url_path = '/' + url_path
+        
+    compiled_pattern = robots_txt_pattern_compile(robots_path)        
+    return bool(compiled_pattern.fullmatch(url_path))

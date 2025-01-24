@@ -13,7 +13,7 @@ class ScraperLoggingCallback(ABC):
     
 class ScraperAugmentCallback(ABC):
     @abstractmethod
-    async def augment_page(self, url: ScraperUrl, page: ScraperWebPage) -> None:
+    async def on_web_page(self, url: ScraperUrl, page: ScraperWebPage) -> None:
         pass
     
     
@@ -33,7 +33,9 @@ class ScraperDomainConfig:
         self.allowance = allowance
         
 class ScraperConfig:
-    def __init__(self, *, seed_urls: list[ScraperUrl],
+    def __init__(self, *, 
+                seed_urls: list[ScraperUrl],
+                path_filters: list[str] = [],
                 max_parallel_requests: int = 16,
                 use_headless_browser: bool = False,
                 request_timeout_seconds: int = 30,
@@ -44,14 +46,16 @@ class ScraperConfig:
                 max_back_to_back_errors: int = 128,
                 scraper_store_factory: ScraperStoreFactory,
                 log_callback: ScraperLoggingCallback | None = None,
-                ai_callback: ScraperAugmentCallback | None = None,
+                augment_callback: ScraperAugmentCallback | None = None,
                 max_depth: int = 16,
                 crawl_delay_seconds: int = 1,
                 domain_config: ScraperDomainConfig = ScraperDomainConfig(
                     allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
                 ),
+                
                 user_agent: str = 'pyminiscraper',):
         self.seed_urls = seed_urls
+        self.path_filters = path_filters
         self.max_parallel_requests = max_parallel_requests
         self.use_headless_browser = use_headless_browser
         self.request_timeout_seconds = request_timeout_seconds
@@ -61,7 +65,7 @@ class ScraperConfig:
         self.max_requested_urls = max_requested_urls
         self.store_factory = scraper_store_factory
         self.log_callback = log_callback
-        self.ai_callback = ai_callback
+        self.augment_callback = augment_callback
         self.max_depth = max_depth
         self.crawl_delay_seconds = crawl_delay_seconds
         self.user_agent = user_agent
