@@ -87,6 +87,7 @@ class Sitemap:
             loc = loc_elem.text
             lastmod_elem = sitemap.find('ns:lastmod', namespace)
             lastmod = lastmod_elem.text if lastmod_elem is not None else None
+            lastmod_date = None
             if lastmod is not None:
                 lastmod_date = datetime.fromisoformat(lastmod.replace('Z', '+00:00'))
             sitemaps.append(SitemapUrl(loc, lastmod_date))
