@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 from .config import ScraperDomainConfig, ScraperDomainConfigMode, ScraperAllowedDomains
 import re
 from .robots import robots_txt_pattern_compile
+from .url import normalize_url
 
 class DomainFilter:
     def __init__(self, domain_config: ScraperDomainConfig, urls: list[str] = [])-> None:
@@ -22,6 +23,7 @@ class DomainFilter:
             self.forbidden_domains = domain_config.forbidden_domains
                 
     def is_allowed(self, url: str)-> bool:
+        url = normalize_url(url)
         domain = urlparse(url).netloc
         if self.forbidden_domains:
             for forbidden_domain in self.forbidden_domains:
