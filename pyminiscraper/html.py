@@ -91,4 +91,10 @@ class HtmlScraperProcessor:
         # Extract text content with simple formatting
         text_content = self.soup.get_text(separator='\n', strip=True)
         
-        return HtmlContent(canonical_url, list(outgoing_urls), text_content, sitemap_urls, rss_urls,robots_content)
+        return HtmlContent(
+            canonical_url=canonical_url, 
+            outgoing_urls=list(outgoing_urls),
+            visible_text=text_content, 
+            sitemap_urls=sitemap_urls, 
+            rss_urls=rss_urls, 
+            robots_content=robots_content)

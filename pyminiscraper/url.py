@@ -158,7 +158,7 @@ def normalized_url_hash(url:str)->str:
     normalized_url = normalize_url(url)
     return generate_url_safe_id(normalized_url)
 
-def make_absolute_url(base_url, relative_url):
+def make_absolute_url(base_url, relative_url) -> str:
     # Check if relative_url is already absolute
     domain = urlparse(relative_url).netloc
     if domain:
