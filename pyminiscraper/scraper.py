@@ -14,7 +14,7 @@ from .domain_metadata import DomainMetadata
 from .sitemap import Sitemap
 from .robots import Robot
 from .deque import AsyncDeque
-from .config import ScraperConfig
+from .config import ScraperConfig, ScraperCallbackError
 from datetime import datetime
 from .ratelimiter import CrawlRateLimiter
 import aiohttp
@@ -91,7 +91,10 @@ class Scraper:
         page = extract_metadata(page)        
         self._default_to_external_metadata(url, page)
         if scraper_store:
-            await scraper_store.store_page(page)
+            try:
+                await scraper_store.store_page(page)
+            except Exception as e:
+                raise ScraperCallbackError(f"Error storing page {self._url_context(url)}") from e                
         return page
     
     def _default_to_external_metadata(self, url: ScraperUrl, page: ScraperWebPage) -> None:
@@ -126,7 +129,7 @@ class Scraper:
             await self.request_rate_limiter.acquire()
             try:
                 if scraper_url.type == ScraperUrlType.HTML:
-                    page = await self._load_or_download_page(scraper_store=scraper_store, scraper_url=scraper_url)
+                    page = await self._load_or_download_page(scraper_store=scraper_store, url=scraper_url)
                     await self._enqueue_web_page_urls(scraper_url, page)
                 elif scraper_url.type == ScraperUrlType.SITEMAP:
                     sitemap = await self._download_sitemap(scraper_url.normalized_url)
@@ -134,7 +137,10 @@ class Scraper:
                 elif scraper_url.type == ScraperUrlType.FEED:
                     rss = await self._download_feed(scraper_url.normalized_url)
                     await self._enqueue_feed_urls(rss)                    
-                self.success_urls_count += 1    
+                self.success_urls_count += 1
+            except ScraperCallbackError as e:
+                logger.error(f"callback error while retriving url - {self._looper_context(looper_name)} - {self._url_context(scraper_url)} {e}")
+                raise e
             except Exception as e:
                 await self.config.log(f"exception while retriving url - {self._looper_context(looper_name)} - {self._url_context(scraper_url)}")
                 self.error_urls_count += 1
@@ -189,25 +195,29 @@ class Scraper:
         return self.requested_urls_count >= self.config.max_requested_urls
 
     
-    async def _load_or_download_page(self, scraper_store: ScraperStore, scraper_url: ScraperUrl)-> ScraperWebPage:
-        page = await scraper_store.load_page(scraper_url.normalized_url)        
+    async def _load_or_download_page(self, scraper_store: ScraperStore, url: ScraperUrl)-> ScraperWebPage:
+        try:
+            page = await scraper_store.load_page(url.normalized_url)        
+        except Exception as e:
+            raise ScraperCallbackError(f"Error loading page {self._url_context(url)}") from e                
         try:
             if self.config.use_headless_browser and self.browser_html_scraper_factory:
-                page = await self.browser_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
+                page = await self.browser_html_scraper_factory.new_scraper().scrape(url.normalized_url)
             else:
-                page = await self.http_html_scraper_factory.new_scraper().scrape(scraper_url.normalized_url)
-            self.back_to_back_errors = 0
-            page = await self._extract_metadata_and_save(scraper_store, scraper_url, page)
-            page.requested_at = datetime.now()
-            return page
+                page = await self.http_html_scraper_factory.new_scraper().scrape(url.normalized_url)
+            self.back_to_back_errors = 0            
 
         except Exception as e:
-            logger.warning(f"Failed to fetch page {self._url_context(scraper_url)}")
+            logger.warning(f"Failed to fetch page {self._url_context(url)}")
             self.back_to_back_errors += 1
             if self.back_to_back_errors >= self.config.max_back_to_back_errors:
                 logger.error(f"Terminating due to maximum back to back errors reached")
                 await self.stop()
-            raise ScraperError(f"Failed to fetch page {self._url_context(scraper_url)}") from e
+            raise ScraperError(f"Failed to fetch page {self._url_context(url)}") from e
+
+        page = await self._extract_metadata_and_save(scraper_store, url, page)        
+        page.requested_at = datetime.now()
+        return page
     
     async def _enqueue_web_page_urls(self, url: ScraperUrl, page: ScraperWebPage)-> None:
         for sitemap_url in page.sitemap_urls or []:

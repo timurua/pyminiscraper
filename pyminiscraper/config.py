@@ -6,6 +6,9 @@ from enum import Enum
 
 logger = logging.getLogger("config")
 
+class ScraperCallbackError(Exception):
+    pass
+
 class ScraperLoggingCallback(ABC):
     @abstractmethod
     async def on_log(self, text: str) -> None:
