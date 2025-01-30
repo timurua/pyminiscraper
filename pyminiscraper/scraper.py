@@ -56,7 +56,8 @@ class Scraper:
         self.sitemaps: dict[str, Sitemap] = {}
         self.feeds: dict[str, Feed] = {}
         self.domain_filter = DomainFilter(config.domain_config, [url.url for url in config.seed_urls])
-        self.path_filter = PathFilter(config.path_filters)
+        self.include_path_patterns = PathFilter(config.include_path_patterns, default_value=True)
+        self.exclude_path_patterns = PathFilter(config.exclude_path_patterns, default_value=False)
         
 
     async def run(self) -> ScraperStats:
@@ -285,7 +286,10 @@ class Scraper:
             logger.info(f"skipping url before queueing - domain not allowed - {self._looper_context('')} - {self._url_context(scraper_url)}")
             return
         
-        if scraper_url.type == ScraperUrlType.HTML and not skip_path_filter and not self.path_filter.is_allowed(scraper_url.normalized_url):
+        if scraper_url.type == ScraperUrlType.HTML \
+            and not skip_path_filter \
+            and ( self.exclude_path_patterns.is_passing(scraper_url.normalized_url)
+                or not self.include_path_patterns.is_passing(scraper_url.normalized_url)):
             logger.info(f"skipping url before queueing - path not allowed - {self._looper_context('')} - {self._url_context(scraper_url)}")
             return
                 

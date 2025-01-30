@@ -40,14 +40,15 @@ class DomainFilter:
         return False
     
 class PathFilter:
-    def __init__(self, path_filters: list[str]):
+    def __init__(self, path_filters: list[str], default_value: bool = True)-> None:
         self.path_filter_patterns: list[re.Pattern] = []
+        self.default_value = default_value
         for path_filter in path_filters:
             self.path_filter_patterns.append(robots_txt_pattern_compile(path_filter))
             
-    def is_allowed(self, url: str)-> bool:
+    def is_passing(self, url: str)-> bool:
         if not self.path_filter_patterns:
-            return True
+            return self.default_value
         
         path = urlparse(url).path
         if not path.startswith('/'):

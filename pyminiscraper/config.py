@@ -38,7 +38,8 @@ class ScraperDomainConfig:
 class ScraperConfig:
     def __init__(self, *, 
                 seed_urls: list[ScraperUrl],
-                path_filters: list[str] = [],
+                include_path_patterns: list[str] = [],
+                exclude_path_patterns: list[str] = [],
                 max_parallel_requests: int = 16,
                 use_headless_browser: bool = False,
                 request_timeout_seconds: int = 30,
@@ -58,7 +59,8 @@ class ScraperConfig:
                 
                 user_agent: str = 'pyminiscraper',):
         self.seed_urls = seed_urls
-        self.path_filters = path_filters
+        self.include_path_patterns = include_path_patterns
+        self.exclude_path_patterns = exclude_path_patterns
         self.max_parallel_requests = max_parallel_requests
         self.use_headless_browser = use_headless_browser
         self.request_timeout_seconds = request_timeout_seconds
