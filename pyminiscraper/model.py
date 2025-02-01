@@ -79,7 +79,7 @@ class ScraperWebPage:
                 outgoing_urls: list[str] | None = None,
                 visible_text: str | None = None,
                 sitemap_urls: list[str] | None = None,
-                rss_urls: list[str] | None = None,
+                feed_urls: list[str] | None = None,
                 robots_content: list[str] | None = None,
                 text_chunks: list[str] | None = None,
                 requested_at: datetime | None = None
@@ -101,7 +101,7 @@ class ScraperWebPage:
         self.outgoing_urls = outgoing_urls
         self.visible_text = visible_text
         self.sitemap_urls = sitemap_urls
-        self.feed_urls = rss_urls
+        self.feed_urls = feed_urls
         self.robots_content = robots_content
         self.text_chunks = text_chunks
         self.requested_at = requested_at
