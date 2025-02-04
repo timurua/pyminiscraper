@@ -1,22 +1,51 @@
 from abc import ABC, abstractmethod
 from .model import ScraperUrl, ScraperWebPage
-from .store import ScraperStoreFactory
 import logging
 from enum import Enum
+from typing import Optional
+from typing import AsyncGenerator, Any
+import aiohttp
+from .sitemap import Sitemap
+from .feed import Feed
 
 logger = logging.getLogger("config")
 
 class ScraperCallbackError(Exception):
     pass
 
-class ScraperLoggingCallback(ABC):
+
+class ScraperContext(ABC):
     @abstractmethod
-    async def on_log(self, text: str) -> None:
-        pass    
+    def do_request(self, url: str) -> AsyncGenerator[aiohttp.ClientResponse, Any]:
+        pass
+            
+    @abstractmethod
+    async def equeue_url(self, url: ScraperUrl) -> None:
+        pass
     
-class ScraperAugmentCallback(ABC):
     @abstractmethod
-    async def on_web_page(self, url: ScraperUrl, page: ScraperWebPage) -> None:
+    def prevent_default_queuing(self) -> None:
+        pass
+
+class ScraperCallback:
+        async def on_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
+            pass
+        
+        async def on_sitemap(self, context: ScraperContext, sitemap: Sitemap) -> None:
+            pass       
+        
+        async def on_feed(self, context: ScraperContext, feed: Feed) -> None:
+            pass                 
+
+        async def load_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
+            return None
+        
+        async def on_log(self, text: str) -> None:        
+            pass
+   
+class ScraperResponseCallback(ABC):
+    @abstractmethod
+    async def on_reponse(self, url: ScraperUrl, page: ScraperWebPage) -> None:
         pass
     
     
@@ -38,6 +67,7 @@ class ScraperDomainConfig:
 class ScraperConfig:
     def __init__(self, *, 
                 seed_urls: list[ScraperUrl],
+                callback: ScraperCallback,
                 include_path_patterns: list[str] = [],
                 exclude_path_patterns: list[str] = [],
                 max_parallel_requests: int = 16,
@@ -46,17 +76,15 @@ class ScraperConfig:
                 follow_web_page_links: bool = False,
                 follow_sitemap_links: bool = True,
                 follow_feed_links: bool = True,
+                prevent_default_queuing: bool = False,
                 max_requested_urls: int = 64 * 1024,
-                max_back_to_back_errors: int = 128,
-                scraper_store_factory: ScraperStoreFactory,
-                log_callback: ScraperLoggingCallback | None = None,
-                augment_callback: ScraperAugmentCallback | None = None,
+                max_back_to_back_errors: int = 128,                
+                on_response_callback: ScraperResponseCallback | None = None,
                 max_depth: int = 16,
                 crawl_delay_seconds: int = 1,
                 domain_config: ScraperDomainConfig = ScraperDomainConfig(
                     allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
-                ),
-                
+                ),                
                 user_agent: str = 'pyminiscraper',):
         self.seed_urls = seed_urls
         self.include_path_patterns = include_path_patterns
@@ -67,10 +95,10 @@ class ScraperConfig:
         self.follow_web_page_links = follow_web_page_links
         self.follow_feed_links = follow_feed_links
         self.follow_sitemap_links = follow_sitemap_links
+        self.prevent_default_queuing = prevent_default_queuing
         self.max_requested_urls = max_requested_urls
-        self.store_factory = scraper_store_factory
-        self.log_callback = log_callback
-        self.augment_callback = augment_callback
+        self.callback = callback
+        self.on_response_callback = on_response_callback
         self.max_depth = max_depth
         self.crawl_delay_seconds = crawl_delay_seconds
         self.user_agent = user_agent
@@ -78,6 +106,5 @@ class ScraperConfig:
         self.domain_config = domain_config
 
     async def log(self, text: str) -> None:
-        logger.info(text)
-        if self.log_callback:
-            await self.log_callback.on_log(text)
+        logger.info(text)        
+        await self.callback.on_log(text)

@@ -6,7 +6,6 @@ from .url import make_absolute_url
 from .scrape_html_http import HttpHtmlScraperFactory
 from .scrape_html_browser import BrowserHtmlScraperFactory
 from .model import ScraperWebPage, ScraperUrl, ScraperUrlType, ScrapeUrlMetadata
-from .store import ScraperStore
 from .model import ScraperUrl
 from .extract import extract_metadata, PageMetadataExtractor
 from .stats import ScraperStats, analyze_url_groups
@@ -14,12 +13,13 @@ from .domain_metadata import DomainMetadata
 from .sitemap import Sitemap
 from .robots import Robot
 from .deque import AsyncDeque
-from .config import ScraperConfig, ScraperCallbackError
+from .config import ScraperConfig, ScraperCallbackError, ScraperContext
 from datetime import datetime
 from .ratelimiter import CrawlRateLimiter
 import aiohttp
 from .feed import FeedParser, Feed
 from .filter import DomainFilter, PathFilter
+from .context import ScraperContextImpl
 
 
 logger = logging.getLogger("scraper")
@@ -88,14 +88,13 @@ class Scraper:
         if self.browser_html_scraper_factory:
             await self.browser_html_scraper_factory.close()
 
-    async def _extract_metadata_and_save(self, scraper_store: ScraperStore,  url: ScraperUrl, page: ScraperWebPage) -> ScraperWebPage:
-        page = extract_metadata(page)        
-        self._default_to_external_metadata(url, page)
-        if scraper_store:
-            try:
-                await scraper_store.store_page(page)
-            except Exception as e:
-                raise ScraperCallbackError(f"Error storing page {self._url_context(url)}") from e                
+    async def _extract_metadata_and_save(self, context: ScraperContext, url: ScraperUrl, page: ScraperWebPage) -> ScraperWebPage:
+        page = extract_metadata(page)                
+        self._default_to_external_metadata(url, page)                
+        try:
+            await self.config.callback.on_page(context, url, page)
+        except Exception as e:
+            raise ScraperCallbackError(f"Error storing page {self._url_context(url)}") from e                
         return page
     
     def _default_to_external_metadata(self, url: ScraperUrl, page: ScraperWebPage) -> None:
@@ -104,12 +103,12 @@ class Scraper:
             page.metadata_description = page.metadata_description or url.metadata.description
             page.metadata_image_url = page.metadata_image_url or url.metadata.image_url
             page.metadata_published_at = page.metadata_published_at or url.metadata.published_at
-
-
+            
+    def _should_do_default_queuing(self, context: ScraperContextImpl) -> bool:
+        return not context.should_prevent_default_queuing and not self.config.prevent_default_queuing
 
     async def _scrape_loop(self, looper_name: str) -> ScraperLoopResult:
         loop_completed_urls_count = 0
-        scraper_store = self.config.store_factory.new_store()
         while True:
             scraper_url = await self.url_queue.popright()
             if scraper_url.is_terminal() or self._was_max_requests_achieved():
@@ -128,16 +127,29 @@ class Scraper:
 
             self.requested_urls_count += 1
             await self.request_rate_limiter.acquire()
+            context = ScraperContextImpl(self.client_session)
             try:
                 if scraper_url.type == ScraperUrlType.HTML:
-                    page = await self._load_or_download_page(scraper_store=scraper_store, url=scraper_url)
-                    await self._enqueue_web_page_urls(scraper_url, page)
+                    page = await self._load_or_download_page(context=context, url=scraper_url)
+                    if self._should_do_default_queuing(context):
+                        await self._enqueue_web_page_urls(scraper_url, page)
                 elif scraper_url.type == ScraperUrlType.SITEMAP:
                     sitemap = await self._download_sitemap(scraper_url.normalized_url)
-                    await self._enqueue_sitemap_urls(sitemap)
+                    try:
+                        await self.config.callback.on_sitemap(context, sitemap)
+                    except Exception as e:
+                        raise ScraperCallbackError(f"Error storing sitemap {self._url_context(scraper_url)}") from e
+                    
+                    if self._should_do_default_queuing(context):
+                        await self._enqueue_sitemap_urls(sitemap)
                 elif scraper_url.type == ScraperUrlType.FEED:
-                    rss = await self._download_feed(scraper_url.normalized_url)
-                    await self._enqueue_feed_urls(rss)                    
+                    feed = await self._download_feed(scraper_url.normalized_url)
+                    try:
+                        await self.config.callback.on_feed(context, feed)
+                    except Exception as e:
+                        raise ScraperCallbackError(f"Error storing sitemap {self._url_context(scraper_url)}") from e
+                    if self._should_do_default_queuing(context):
+                        await self._enqueue_feed_urls(feed)                    
                 self.success_urls_count += 1
             except ScraperCallbackError as e:
                 logger.error(f"callback error while retriving url - {self._looper_context(looper_name)} - {self._url_context(scraper_url)} {e}")
@@ -196,9 +208,9 @@ class Scraper:
         return self.requested_urls_count >= self.config.max_requested_urls
 
     
-    async def _load_or_download_page(self, scraper_store: ScraperStore, url: ScraperUrl)-> ScraperWebPage:
+    async def _load_or_download_page(self, context: ScraperContext, url: ScraperUrl)-> ScraperWebPage:
         try:
-            page = await scraper_store.load_page(url.normalized_url)        
+            page = await self.config.callback.load_page_from_cache(url.normalized_url)        
         except Exception as e:
             raise ScraperCallbackError(f"Error loading page {self._url_context(url)}") from e                
         try:
@@ -216,11 +228,11 @@ class Scraper:
                 await self.stop()
             raise ScraperError(f"Failed to fetch page {self._url_context(url)}") from e
 
-        page = await self._extract_metadata_and_save(scraper_store, url, page)        
+        page = await self._extract_metadata_and_save(context, url, page)        
         page.requested_at = datetime.now()
         return page
     
-    async def _enqueue_web_page_urls(self, url: ScraperUrl, page: ScraperWebPage)-> None:
+    async def _enqueue_web_page_urls(self, url: ScraperUrl, page: ScraperWebPage)-> None:        
         for sitemap_url in page.sitemap_urls or []:
             await self._queue_scraper_url(ScraperUrl(sitemap_url, max_depth=self.config.max_depth, type=ScraperUrlType.SITEMAP))
 

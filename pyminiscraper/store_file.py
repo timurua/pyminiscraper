@@ -1,23 +1,17 @@
-from .store import ScraperStore, ScraperStoreFactory
-from typing import Optional
-from .model import ScraperWebPage
+from .config import ScraperCallback, ScraperContext
+from typing import Optional, override
+from .model import ScraperWebPage, ScraperUrl
 import os
 import json
 from dateutil import parser
 from .url import normalized_url_hash
 
-class FileStoreFactory(ScraperStoreFactory):
-    def __init__(self, directory: str):
-        self.directory = directory
-
-    def new_store(self) -> ScraperStore:
-        return FileStore(self.directory)
-
-class FileStore(ScraperStore):
+class FileStore(ScraperCallback):
     def __init__(self, directory: str):
         self.directory = directory
         
-    async def store_page(self, response: ScraperWebPage) -> None:
+    @override
+    async def on_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
         normalized_url = response.normalized_url
         safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
@@ -25,7 +19,7 @@ class FileStore(ScraperStore):
         os.makedirs(self.directory, exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(self.model_dump_json(response))
-
+            
     def model_dump_json(self, page: ScraperWebPage) -> str:
         return json.dumps({
             'url': page.url,
@@ -49,7 +43,8 @@ class FileStore(ScraperStore):
             'text_chunks': page.text_chunks,
         })
 
-    async def load_page(self, normalized_url: str) -> Optional[ScraperWebPage]:
+    @override
+    async def load_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
         safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
 

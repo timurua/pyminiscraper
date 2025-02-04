@@ -4,7 +4,7 @@ import pathlib
 import logging
 import sys
 from .scraper import Scraper, ScraperConfig, ScraperUrl, ScraperUrlType
-from .store_file import FileStoreFactory
+from .store_file import FileStore
 from .config import ScraperDomainConfig, ScraperDomainConfigMode
 
 @click.command()
@@ -36,7 +36,7 @@ async def main(storage_dir: pathlib.Path):
             request_timeout_seconds=30,
             crawl_delay_seconds=1,
             follow_web_page_links=False,
-            scraper_store_factory=FileStoreFactory(storage_dir.absolute().as_posix()),
+            callback=FileStore(storage_dir.absolute().as_posix()),
         ),
     )
     await scraper.run()

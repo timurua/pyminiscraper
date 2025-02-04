@@ -1,9 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from pyminiscraper.scraper import Scraper, ScraperError
-from pyminiscraper.config import ScraperConfig, ScraperDomainConfig, ScraperDomainConfigMode, ScraperAllowedDomains
+from pyminiscraper.config import ScraperConfig, ScraperDomainConfig, ScraperDomainConfigMode, ScraperAllowedDomains, ScraperCallback
 from pyminiscraper.model import ScraperUrl, ScraperUrlType, ScraperWebPage
-from pyminiscraper.store import ScraperStoreFactory
 from pyminiscraper.robots import Robot
 from pyminiscraper.sitemap import Sitemap
 from pyminiscraper.domain_metadata import DomainMetadata
@@ -24,7 +23,7 @@ def scraper_config():
         ),
         
         seed_urls=[ScraperUrl("http://example.com", type=ScraperUrlType.HTML)],
-        scraper_store_factory=MagicMock(ScraperStoreFactory),
+        callback=MagicMock(ScraperCallback),
         max_back_to_back_errors=3,
         follow_web_page_links=False,
         max_depth=3
