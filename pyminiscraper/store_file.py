@@ -11,7 +11,7 @@ class FileStore(ScraperCallback):
         self.directory = directory
         
     @override
-    async def on_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
+    async def on_web_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
         normalized_url = response.normalized_url
         safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
@@ -44,7 +44,7 @@ class FileStore(ScraperCallback):
         })
 
     @override
-    async def load_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
+    async def load_web_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
         safe_filename = self.safe_filename(normalized_url)
         filepath = os.path.join(self.directory, f"{safe_filename}.json")
 

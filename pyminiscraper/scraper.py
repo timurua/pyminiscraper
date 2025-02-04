@@ -92,7 +92,7 @@ class Scraper:
         page = extract_metadata(page)                
         self._default_to_external_metadata(url, page)                
         try:
-            await self.config.callback.on_page(context, url, page)
+            await self.config.callback.on_web_page(context, url, page)
         except Exception as e:
             raise ScraperCallbackError(f"Error storing page {self._url_context(url)}") from e                
         return page
@@ -210,7 +210,7 @@ class Scraper:
     
     async def _load_or_download_page(self, context: ScraperContext, url: ScraperUrl)-> ScraperWebPage:
         try:
-            page = await self.config.callback.load_page_from_cache(url.normalized_url)        
+            page = await self.config.callback.load_web_page_from_cache(url.normalized_url)        
         except Exception as e:
             raise ScraperCallbackError(f"Error loading page {self._url_context(url)}") from e                
         try:

@@ -7,9 +7,9 @@ class MemoryStore(ScraperCallback):
         self.store = store
         
     @override
-    async def on_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
+    async def on_web_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
         self.store[response.normalized_url] = response
         
     @override
-    async def load_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
+    async def load_web_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
         return self.store.get(normalized_url)

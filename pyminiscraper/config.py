@@ -28,7 +28,7 @@ class ScraperContext(ABC):
         pass
 
 class ScraperCallback:
-        async def on_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
+        async def on_web_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
             pass
         
         async def on_sitemap(self, context: ScraperContext, sitemap: Sitemap) -> None:
@@ -37,7 +37,7 @@ class ScraperCallback:
         async def on_feed(self, context: ScraperContext, feed: Feed) -> None:
             pass                 
 
-        async def load_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
+        async def load_web_page_from_cache(self, normalized_url: str) -> Optional[ScraperWebPage]:
             return None
         
         async def on_log(self, text: str) -> None:        
