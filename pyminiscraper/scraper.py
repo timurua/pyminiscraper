@@ -106,6 +106,10 @@ class Scraper:
             
     def _should_do_default_queuing(self, context: ScraperContextImpl) -> bool:
         return not context.should_prevent_default_queuing and not self.config.prevent_default_queuing
+    
+    async def _enqueue_context_urls(self, context: ScraperContextImpl) -> None:
+        for url in context.queued_urls:
+            await self._queue_scraper_url(url, skip_path_filter=True)
 
     async def _scrape_loop(self, looper_name: str) -> ScraperLoopResult:
         loop_completed_urls_count = 0
@@ -131,8 +135,9 @@ class Scraper:
             try:
                 if scraper_url.type == ScraperUrlType.HTML:
                     page = await self._load_or_download_page(context=context, url=scraper_url)
+                    await self._enqueue_context_urls(context)
                     if self._should_do_default_queuing(context):
-                        await self._enqueue_web_page_urls(scraper_url, page)
+                        await self._enqueue_web_page_urls(scraper_url, page)                    
                 elif scraper_url.type == ScraperUrlType.SITEMAP:
                     sitemap = await self._download_sitemap(scraper_url.normalized_url)
                     try:
@@ -140,6 +145,7 @@ class Scraper:
                     except Exception as e:
                         raise ScraperCallbackError(f"Error storing sitemap {self._url_context(scraper_url)}") from e
                     
+                    await self._enqueue_context_urls(context)
                     if self._should_do_default_queuing(context):
                         await self._enqueue_sitemap_urls(sitemap)
                 elif scraper_url.type == ScraperUrlType.FEED:
@@ -148,6 +154,7 @@ class Scraper:
                         await self.config.callback.on_feed(context, feed)
                     except Exception as e:
                         raise ScraperCallbackError(f"Error storing sitemap {self._url_context(scraper_url)}") from e
+                    await self._enqueue_context_urls(context)
                     if self._should_do_default_queuing(context):
                         await self._enqueue_feed_urls(feed)                    
                 self.success_urls_count += 1

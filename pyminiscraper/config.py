@@ -7,6 +7,7 @@ from typing import AsyncGenerator, Any
 import aiohttp
 from .sitemap import Sitemap
 from .feed import Feed
+from contextlib import asynccontextmanager
 
 logger = logging.getLogger("config")
 
@@ -16,6 +17,7 @@ class ScraperCallbackError(Exception):
 
 class ScraperContext(ABC):
     @abstractmethod
+    @asynccontextmanager
     def do_request(self, url: str) -> AsyncGenerator[aiohttp.ClientResponse, Any]:
         pass
             

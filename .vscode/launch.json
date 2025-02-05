@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Main Scheduling",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pyminiscraper.main_scheduling",
+            "args": [
+                "/home/timur/page_store_scheduling"
+            ]
+
+        },    
+        {
             "name": "Main Sitemap",
             "type": "debugpy",
             "request": "launch",

@@ -2,6 +2,7 @@ import aiohttp
 from typing import AsyncGenerator, Any, override
 from .model import ScraperUrl, ScraperWebPage
 from .config import ScraperContext
+from contextlib import asynccontextmanager
 
 
 class ScraperContextImpl(ScraperContext):
@@ -11,6 +12,7 @@ class ScraperContextImpl(ScraperContext):
         self.queued_urls: list[ScraperUrl] = []
 
     @override
+    @asynccontextmanager
     async def do_request(self, url: str) -> AsyncGenerator[aiohttp.ClientResponse, Any]:
         async with self.client_session.get(url) as http_response:
             yield http_response
