@@ -130,7 +130,6 @@ class Scraper:
                 continue
 
             self.requested_urls_count += 1
-            await self.request_rate_limiter.acquire()
             context = ScraperContextImpl(self.client_session)
             try:
                 if scraper_url.type == ScraperUrlType.HTML:
@@ -220,6 +219,11 @@ class Scraper:
             page = await self.config.callback.load_web_page_from_cache(url.normalized_url)        
         except Exception as e:
             raise ScraperCallbackError(f"Error loading page {self._url_context(url)}") from e                
+        if page:
+            return page
+        
+        await self.request_rate_limiter.acquire()
+        
         try:
             if self.config.use_headless_browser and self.browser_html_scraper_factory:
                 page = await self.browser_html_scraper_factory.new_scraper().scrape(url.normalized_url)
