@@ -10,7 +10,8 @@ class DomainFilter:
         self.allowed_domains: set[str]|None = set()        
         if domain_config.allowance == ScraperDomainConfigMode.DIREVE_FROM_URLS:
             for url in urls:
-                self.allowed_domains.add(urlparse(url).netloc)
+                normalized_url = normalize_url(url)
+                self.allowed_domains.add(urlparse(normalized_url).netloc)
         elif domain_config.allowance == ScraperDomainConfigMode.ALLOW_ALL:
             self.allowed_domains = None
         elif isinstance(domain_config.allowance, ScraperAllowedDomains):
