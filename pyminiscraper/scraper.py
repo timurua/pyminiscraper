@@ -38,7 +38,8 @@ class Scraper:
         self.client_session = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(ssl=False),
             headers={
-                'User-Agent': config.user_agent
+                'User-Agent': config.user_agent,
+                "Referer": config.referer,
             },
             timeout = aiohttp.ClientTimeout(total=config.request_timeout_seconds))
         

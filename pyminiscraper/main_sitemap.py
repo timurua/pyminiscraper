@@ -6,6 +6,7 @@ import sys
 from .scraper import Scraper, ScraperConfig, ScraperUrl, ScraperUrlType
 from .store_file import FileStore
 from .config import ScraperDomainConfig, ScraperDomainConfigMode
+from fake_useragent import UserAgent
 
 @click.command()
 @click.argument('storage_dir', type=click.Path(file_okay=False, dir_okay=True, path_type=pathlib.Path))
@@ -22,16 +23,20 @@ async def main(storage_dir: pathlib.Path):
     storage_dir.mkdir(parents=True, exist_ok=True)
     click.echo(f"Storage directory set to: {storage_dir}")
 
+    ua = UserAgent()
+
     scraper = Scraper(
         ScraperConfig(
             seed_urls=[
                 ScraperUrl(
-                    "https://ai.meta.com/sitemap.xml", type= ScraperUrlType.SITEMAP)
+                    "https://blog.palantir.com/sitemap/sitemap.xml", type= ScraperUrlType.SITEMAP)
             ],
             max_parallel_requests=5,
             domain_config=ScraperDomainConfig(
                 allowance=ScraperDomainConfigMode.ALLOW_ALL
             ),
+            user_agent=ua.random,
+            exclude_path_patterns=["/tagged/"],
             use_headless_browser=True,
             request_timeout_seconds=30,
             crawl_delay_seconds=1,

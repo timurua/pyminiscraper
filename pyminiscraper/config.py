@@ -87,7 +87,8 @@ class ScraperConfig:
                 domain_config: ScraperDomainConfig = ScraperDomainConfig(
                     allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
                 ),                
-                user_agent: str = 'pyminiscraper',):
+                user_agent: str = 'pyminiscraper',
+                referer: str = "https://www.google.com",) -> None:
         self.seed_urls = seed_urls
         self.include_path_patterns = include_path_patterns
         self.exclude_path_patterns = exclude_path_patterns
@@ -104,6 +105,7 @@ class ScraperConfig:
         self.max_depth = max_depth
         self.crawl_delay_seconds = crawl_delay_seconds
         self.user_agent = user_agent
+        self.referer = referer
         self.max_back_to_back_errors = max_back_to_back_errors
         self.domain_config = domain_config
 
