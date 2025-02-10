@@ -64,6 +64,17 @@ class Scraper:
         for scraper_url in self.config.seed_urls:
             await self._queue_scraper_url(scraper_url, skip_path_filter=True)
 
+        if self._is_crawler_empty():
+            logger.info("finished before starting - no urls to scrape")
+            return ScraperStats(
+                queued_urls_count=len(self.queued_urls),
+                requested_urls_count=self.requested_urls_count,
+                success_urls_count=self.success_urls_count,
+                error_urls_count=self.error_urls_count,
+                skipped_urls_count=self.skipped_urls_count,
+                domain_stats={}
+            )
+
         tasks = []
         for i in range(self.config.max_parallel_requests):
             task = asyncio.create_task(self._scrape_loop(f"Scraper-{i}"))
@@ -329,9 +340,12 @@ class Scraper:
 
     def _is_domain_allowed(self, normalized_url: str) -> bool:
         return self.domain_filter.is_allowed(normalized_url)
+    
+    def _is_crawler_empty(self) -> bool:
+        return (self.success_urls_count+self.error_urls_count+self.skipped_urls_count) >= len(self.queued_urls)
 
     async def _terminate_all_loops_if_needed(self, name: str) -> None:   
-        if (self.success_urls_count+self.error_urls_count+self.skipped_urls_count) < len(self.queued_urls):
+        if not self._is_crawler_empty():
             return
         logger.info(
             f"terminating all loops - no more queued urls - {self._looper_context(name)}")
