@@ -6,27 +6,32 @@
 
 ## Features
 
-| Feature | Implemented |
+| Feature | Description |
 |---------|------------|
-| Basic Web Page scraping | ✅ |
-| Extremely scalable async scraping | ✅ |
-| Web Page spidering | ✅ |
-| Parallel requests | ✅ |
-| Headless browser support | ✅ |
-| Robots parsing | ✅ |
-| Sitemap parsing | ✅ |
-| RSS parsing | ✅ |
-| Atom parsing | ✅ |
-| Open Graph parsing | ✅ |
-| Rate limiting | ✅ |
-| Error handling | ✅ |
-| Depth control | ✅ |
-| Custom user agent | ✅ |
-| File storage | ✅ |
-| Custom callbacks | ✅ |
-| Domain restrictions | ✅ |
-| Request timeout | ✅ |
-| Page caching | ✅ |
+| Basic Web Page scraping | Scrape HTML content from web pages |
+| Async scraping | Extremely scalable asynchronous scraping |
+| Web Page spidering | Follow and scrape links from web pages |
+| Parallel requests | Configure number of concurrent requests |
+| Headless browser support | JavaScript rendering support |
+| Robots.txt parsing | Respect robots.txt rules |
+| Sitemap parsing | Parse and follow sitemap.xml |
+| RSS/Atom parsing | Parse and follow RSS/Atom feeds |
+| Open Graph parsing | Extract Open Graph metadata |
+| Rate limiting | Configurable per-domain rate limiting |
+| Error handling | Robust error handling with retry logic |
+| Depth control | Control recursion depth for link following |
+| Custom user agent | Set custom User-Agent strings |
+| File storage | Built-in file storage system |
+| Custom callbacks | Define custom processing logic |
+| Domain restrictions | Control allowed/blocked domains |
+| Request timeout | Configurable request timeouts |
+| Page caching | Cache and reuse downloaded pages |
+
+## Installation
+
+```bash
+pip install pyminiscraper
+```
 
 ## How does it work
 
@@ -70,125 +75,173 @@
 └───────────────────┘
 ```
 
-## Use Cases
+## Basic Usage
 
-### Downloading only sitemap referenced web pages
+### Downloading Sitemap-Referenced Pages
 
-Here is a basic example of how to use `pyminiscraper` to scrape 
+This example shows how to scrape only pages referenced in a sitemap:
 
 ```python
+from pyminiscraper import Scraper, ScraperConfig, ScraperUrl, FileStore
+from pyminiscraper.config import ScraperDomainConfig, ScraperDomainConfigMode
 
 scraper = Scraper(
     ScraperConfig(
         seed_urls=[
-            ScraperUrl(
-                "https://www.anthropic.com/", max_depth=2, ScraperUrlType.HTML)
+            ScraperUrl("https://www.example.com/", max_depth=2)
         ],
         follow_sitemap_links=True,
         follow_web_page_links=False,
         follow_feed_links=False,
-        scraper_store_factory=FileStoreFactory(storage_dir),
+        callback=FileStore(storage_dir),
     ),
 )
 await scraper.run()
-
 ```
 
-### Scraping pages referenced in Atom/RSS Feeds
+### Scraping RSS/Atom Feeds
 
-Here is a basic example of how to use `pyminiscraper` to scrape 
+Example of scraping content from RSS/Atom feeds:
 
 ```python
+from pyminiscraper import Scraper, ScraperConfig, ScraperUrl, ScraperUrlType, FileStore
+
 scraper = Scraper(
     ScraperConfig(
         seed_urls=[
             ScraperUrl(
-                "https://feeds.feedburner.com/PythonInsider", type= ScraperUrlType.FEED)
+                "https://feeds.feedburner.com/PythonInsider", 
+                type=ScraperUrlType.FEED
+            )
         ],
         follow_sitemap_links=False,
         follow_web_page_links=False,
         follow_feed_links=True,
-        scraper_store_factory=FileStoreFactory(storage_dir),
+        callback=FileStore(storage_dir),
     ),
 )
 await scraper.run()
 ```
 
-### Full web site capture/spidering using all possible sources of references Sitemaps/Atom/RSS/links on Web Pages
+### Full Website Crawling
 
-Here is a basic example of how to use `pyminiscraper` to scrape 
+Example of comprehensive website crawling using all available sources:
 
 ```python
 scraper = Scraper(
     ScraperConfig(
         seed_urls=[
-            ScraperUrl(
-                "https://www.anthropic.com/", type= ScraperUrlType.FEED)
+            ScraperUrl("https://www.example.com/")
         ],
         follow_sitemap_links=True,
         follow_web_page_links=True,
         follow_feed_links=True,
-        scraper_store_factory=FileStoreFactory(storage_dir),
+        callback=FileStore(storage_dir),
     ),
 )
 await scraper.run()
 ```
 
-### High volume scraping
+### Custom Processing with Callbacks
 
-Here is a basic example of how to use `pyminiscraper` to scrape 
+Example of custom processing using callbacks:
 
 ```python
-async def scrape_site(url: str)
-    scraper = Scraper(
-        ScraperConfig(
-            seed_urls=[
-                ScraperUrl(
-                    url, type= ScraperUrlType.FEED)
-            ],
-            follow_sitemap_links=True,
-            follow_web_page_links=True,
-            follow_feed_links=True,
-            scraper_store_factory=FileStoreFactory(storage_dir),
-        ),
-    )
-    await scraper.run()
+from pyminiscraper.config import ScraperCallback, ScraperContext
+from pyminiscraper.model import ScraperWebPage, ScraperUrl
 
-sites = [
-            "https://example1.com", 
-            "https://example2.com", 
-            "https://example3.com"
-        ]
-tasks = [scrape_site(url) for url in sites]
-await asyncio.gather(*tasks)
+class CustomCallback(ScraperCallback):
+    async def on_web_page(self, context: ScraperContext, request: ScraperUrl, response: ScraperWebPage) -> None:
+        # Custom processing logic here
+        print(f"Processing {response.url}")
+        print(f"Title: {response.metadata_title}")
+        
+    async def on_feed(self, context: ScraperContext, feed: Feed) -> None:
+        # Custom feed processing
+        for item in feed.items:
+            print(f"Feed item: {item.title}")
+
+scraper = Scraper(
+    ScraperConfig(
+        seed_urls=[ScraperUrl("https://example.com")],
+        callback=CustomCallback(),
+    )
+)
+await scraper.run()
 ```
 
-## Advanced Configuration Options
+## Configuration Options
 
 Configuration for web scraping behavior.
 
 Parameters:
-- max_parallel_requests (int): Maximum number of concurrent scraping requests
-- max_requested_urls (int): Maximum total number of URLs to request before stopping
-- max_depth (int): Maximum depth for recursively following links (0 means only scrape seed URLs)
-- max_back_to_back_errors (int): Number of consecutive errors before terminating scraper
-- crawl_delay_seconds (float): Minimum delay between requests to same domain
-- request_timeout_seconds (float): Request timeout in seconds
-- user_agent (str): User agent string to use in requests
-- store_factory: Factory for creating storage backend
-- seed_urls (List[ScraperUrl]): Initial URLs to start scraping from
-- use_headless_browser (bool): Whether to use headless browser for JavaScript rendering
-- follow_web_page_links (bool): Whether to follow links found in web pages
-- follow_sitemap_links (bool): Whether to follow links found in sitemaps
-- follow_feed_links (bool): Whether to follow links found in RSS/Atom feeds
-- domain_config (DomainConfig): Configuration for allowed/blocked domains
-- log (Callable): Logging function to use
+- seed_urls (list[ScraperUrl]): Initial URLs to start scraping from
+- callback (ScraperCallback): Callback for processing scraped content
+- include_path_patterns (list[str]): URL paths to include (default: [])
+- exclude_path_patterns (list[str]): URL paths to exclude (default: [])
+- max_parallel_requests (int): Maximum concurrent requests (default: 16)
+- use_headless_browser (bool): Use headless browser for JavaScript (default: False) 
+- request_timeout_seconds (int): Request timeout in seconds (default: 30)
+- follow_web_page_links (bool): Follow links in web pages (default: False)
+- follow_sitemap_links (bool): Follow sitemap.xml links (default: True)
+- follow_feed_links (bool): Follow RSS/Atom feed links (default: True)
+- prevent_default_queuing (bool): Disable automatic URL queuing (default: False)
+- max_requested_urls (int): Maximum total URLs to request (default: 65536)
+- max_back_to_back_errors (int): Consecutive errors before stopping (default: 128)
+- on_response_callback (ScraperResponseCallback): Optional response callback
+- max_depth (int): Maximum recursion depth for links (default: 16)
+- crawl_delay_seconds (int): Delay between requests per domain (default: 1)
+- domain_config (ScraperDomainConfig): Allowed/blocked domains configuration
+- user_agent (str): User agent string (default: 'pyminiscraper')
+- referer (str): Referer header (default: "https://www.google.com")
 
-The scraper will:
-- Start with seed URLs and scrape them according to configuration
-- Follow links up to max_depth if follow_web_page_links is True
-- Follow sitemap.xml links if follow_sitemap_links is True 
-- Follow RSS/Atom feed links if follow_feed_links is True
-- Respect robots.txt and crawl delay settings
-- Store results using provided store_factory
-- Stop when max_requested_urls is reached or max_back_to_back_errors occurs
+### Domain Configuration
+
+Control which domains are allowed or blocked:
+
+```python
+from pyminiscraper.config import ScraperDomainConfig, ScraperDomainConfigMode
+
+# Allow only specific domains
+config = ScraperDomainConfig(
+    allowance=ScraperAllowedDomains(domains=["example.com", "api.example.com"]),
+    forbidden_domains=["ads.example.com"]
+)
+
+# Allow all domains
+config = ScraperDomainConfig(
+    allowance=ScraperDomainConfigMode.ALLOW_ALL
+)
+
+# Allow only domains derived from seed URLs
+config = ScraperDomainConfig(
+    allowance=ScraperDomainConfigMode.DERIVE_FROM_SEED_URLS
+)
+```
+
+## Error Handling
+
+The scraper includes built-in error handling:
+
+- Respects `max_back_to_back_errors` to stop after consecutive failures
+- Retries failed requests with exponential backoff
+- Logs errors for debugging
+- Continues operation after non-fatal errors
+
+## Performance Tips
+
+1. Adjust `max_parallel_requests` based on your needs and server capacity
+2. Use `crawl_delay_seconds` to control request rate
+3. Enable `use_headless_browser` only when JavaScript rendering is required
+4. Implement caching in your callback to avoid re-downloading pages
+5. Use path patterns to filter URLs before downloading
+
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+

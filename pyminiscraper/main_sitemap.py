@@ -25,26 +25,6 @@ async def main(storage_dir: pathlib.Path):
 
     ua = UserAgent()
 
-    scraper = Scraper(
-        ScraperConfig(
-            seed_urls=[
-                ScraperUrl(
-                    "https://blog.palantir.com/sitemap/sitemap.xml", type= ScraperUrlType.SITEMAP)
-            ],
-            max_parallel_requests=5,
-            domain_config=ScraperDomainConfig(
-                allowance=ScraperDomainConfigMode.ALLOW_ALL
-            ),
-            user_agent=ua.random,
-            exclude_path_patterns=["/tagged/"],
-            use_headless_browser=True,
-            request_timeout_seconds=30,
-            crawl_delay_seconds=1,
-            follow_web_page_links=False,
-            callback=FileStore(storage_dir.absolute().as_posix()),
-        ),
-    )
-    await scraper.run()
 
 def cli():
     """Wrapper function to run async command"""

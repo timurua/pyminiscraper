@@ -8,7 +8,7 @@ class DomainFilter:
     def __init__(self, domain_config: ScraperDomainConfig, urls: list[str] = [])-> None:
         self.forbidden_domains = domain_config.forbidden_domains
         self.allowed_domains: set[str]|None = set()        
-        if domain_config.allowance == ScraperDomainConfigMode.DIREVE_FROM_URLS:
+        if domain_config.allowance == ScraperDomainConfigMode.DIREVE_FROM_SEED_URLS:
             for url in urls:
                 normalized_url = normalize_url(url)
                 self.allowed_domains.add(urlparse(normalized_url).netloc)

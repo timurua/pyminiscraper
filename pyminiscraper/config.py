@@ -53,7 +53,7 @@ class ScraperResponseCallback(ABC):
     
 class ScraperDomainConfigMode(Enum):
     ALLOW_ALL = "allow_all"
-    DIREVE_FROM_URLS = "derive_from_seed_urls"
+    DIREVE_FROM_SEED_URLS = "derive_from_seed_urls"
         
 class ScraperAllowedDomains:
     def __init__(self, *, domains: list[str] = []):
@@ -62,7 +62,7 @@ class ScraperAllowedDomains:
 class ScraperDomainConfig:
     def __init__(self, *,
                 forbidden_domains: list[str] = [],
-                allowance: ScraperDomainConfigMode|ScraperAllowedDomains = ScraperDomainConfigMode.DIREVE_FROM_URLS):        
+                allowance: ScraperDomainConfigMode|ScraperAllowedDomains = ScraperDomainConfigMode.DIREVE_FROM_SEED_URLS):        
         self.forbidden_domains = forbidden_domains
         self.allowance = allowance
         
@@ -85,7 +85,7 @@ class ScraperConfig:
                 max_depth: int = 16,
                 crawl_delay_seconds: int = 1,
                 domain_config: ScraperDomainConfig = ScraperDomainConfig(
-                    allowance=ScraperDomainConfigMode.DIREVE_FROM_URLS
+                    allowance=ScraperDomainConfigMode.DIREVE_FROM_SEED_URLS
                 ),                
                 user_agent: str = 'pyminiscraper',
                 referer: str = "https://www.google.com",) -> None:
